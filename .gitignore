@@ -1,0 +1,14 @@
+node_modules/
+.atl/
+dist/
+.astro/
+.vite/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+patilu-brief-web-astro-seo-geo (1).md
+patilu-especificacion-reestructurada.md
