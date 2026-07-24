@@ -1,0 +1,12 @@
+{
+  "name": "patilu-platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["patilu-cms", "patilu-web"],
+  "scripts": {
+    "test": "node scripts/smoke.mjs test",
+    "typecheck": "node scripts/smoke.mjs typecheck",
+    "build": "node scripts/smoke.mjs build"
+  }
+}
