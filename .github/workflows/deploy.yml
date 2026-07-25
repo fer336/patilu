@@ -1,0 +1,181 @@
+name: Deploy Patilu
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: patilu-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: fer336
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Test deployment contract
+        run: node scripts/deployment-contract.test.mjs
+
+      - name: Test public web
+        run: npm --workspace patilu-web test
+
+      - name: Typecheck public web
+        run: npm --workspace patilu-web run typecheck
+
+      - name: Build public web
+        run: npm --workspace patilu-web run build
+
+      - name: Typecheck CMS
+        run: npm --workspace patilu-cms run typecheck
+
+      - name: Build CMS
+        run: npm --workspace patilu-cms run build
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.28"
+
+      - name: Install API dependencies
+        working-directory: patilu-api
+        run: uv sync --frozen
+
+      - name: Test API
+        working-directory: patilu-api
+        run: uv run python -m pytest
+
+  build-web:
+    name: Build and publish web image
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: patilu-web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-web:sha-${{ github.sha }}
+
+  build-cms:
+    name: Build and publish CMS image
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push CMS image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: patilu-cms/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-cms:sha-${{ github.sha }}
+
+  build-api:
+    name: Build and publish API image
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: patilu-api
+          file: patilu-api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-api:sha-${{ github.sha }}
+
+  promote:
+    name: Promote production images
+    runs-on: ubuntu-latest
+    needs: [build-web, build-cms, build-api]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Verify and promote images
+        run: |
+          images=(patilu-web patilu-cms patilu-api)
+          for image in "${images[@]}"; do
+            docker buildx imagetools inspect "${REGISTRY}/${IMAGE_OWNER}/${image}:sha-${{ github.sha }}"
+          done
+          for image in "${images[@]}"; do
+            docker buildx imagetools create --tag "${REGISTRY}/${IMAGE_OWNER}/${image}:production" "${REGISTRY}/${IMAGE_OWNER}/${image}:sha-${{ github.sha }}"
+          done
+
+  deploy:
+    name: Trigger Portainer deployment
+    runs-on: ubuntu-latest
+    needs: promote
+    steps:
+      - name: Invoke Portainer webhook
+        env:
+          PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK }}
+        run: |
+          test -n "${PORTAINER_WEBHOOK:-}"
+          curl --fail --silent --show-error --request POST --url "$PORTAINER_WEBHOOK"

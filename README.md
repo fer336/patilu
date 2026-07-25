@@ -5,7 +5,7 @@ This slice creates the empty-workspace foundation for the Patilu managed catalog
 ## Quick path
 
 1. Fill `.env` from `.env.example` with real operator-owned values.
-2. Run `python -m pytest` to verify the API scaffold.
+2. Run `cd patilu-api && uv run python -m pytest` to verify the API scaffold.
 3. Run `npm test`, `npm run typecheck`, and `npm run build` for root smoke checks.
 
 ## Applications
@@ -31,3 +31,14 @@ This slice creates the empty-workspace foundation for the Patilu managed catalog
 | Shipping/privacy/legal copy | Truthful public pages and schema constraints. |
 | GitHub/server secret names | Deployment and signed rebuild workflow. |
 | Initial products and real images | Catalog publication and media validation. |
+
+## Deployment foundation
+
+Production deployment is image-only for Docker Swarm: GitHub Actions builds and publishes `patilu-web`, `patilu-cms`, and `patilu-api` images to GHCR with immutable `sha-*` tags plus the mutable `production` tag that Portainer pulls.
+
+Operator checklist:
+
+1. Keep the external Swarm network named `network_public` available for Traefik.
+2. Configure the GitHub secret `PORTAINER_WEBHOOK`; the workflow calls it only after all three image pushes succeed.
+3. Deploy `docker-stack.yml` from Portainer so Traefik routes `patilu.qeva.xyz`, `cms-patilu.qeva.xyz`, and `/api` on the public host.
+4. Roll back through Portainer or by selecting a previous immutable GHCR `sha-*` tag for the affected service.

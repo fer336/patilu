@@ -7,7 +7,7 @@
     "dev": "astro dev",
     "build": "astro check && astro build",
     "typecheck": "astro check",
-    "test": "astro check",
+    "test": "node scripts/homepage-contract.test.mjs && astro check",
     "preview": "astro preview"
   },
   "dependencies": {

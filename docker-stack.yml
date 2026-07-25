@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  patilu-web:
+    image: ghcr.io/fer336/patilu-web:production
+    networks:
+      - network_public
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config:
+        order: start-first
+        failure_action: rollback
+        parallelism: 1
+      rollback_config:
+        order: stop-first
+        parallelism: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_public
+        - traefik.http.routers.patilu-web.rule=Host(`patilu.qeva.xyz`)
+        - traefik.http.routers.patilu-web.entrypoints=websecure
+        - traefik.http.routers.patilu-web.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.patilu-web.priority=10
+        - traefik.http.services.patilu-web.loadbalancer.server.port=8080
+
+  patilu-cms:
+    image: ghcr.io/fer336/patilu-cms:production
+    networks:
+      - network_public
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config:
+        order: start-first
+        failure_action: rollback
+        parallelism: 1
+      rollback_config:
+        order: stop-first
+        parallelism: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_public
+        - traefik.http.routers.patilu-cms.rule=Host(`cms-patilu.qeva.xyz`)
+        - traefik.http.routers.patilu-cms.entrypoints=websecure
+        - traefik.http.routers.patilu-cms.tls.certresolver=letsencryptresolver
+        - traefik.http.services.patilu-cms.loadbalancer.server.port=8080
+
+  patilu-api:
+    image: ghcr.io/fer336/patilu-api:production
+    networks:
+      - network_public
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config:
+        order: start-first
+        failure_action: rollback
+        parallelism: 1
+      rollback_config:
+        order: stop-first
+        parallelism: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_public
+        - traefik.http.routers.patilu-api.rule=Host(`patilu.qeva.xyz`) && PathPrefix(`/api`)
+        - traefik.http.routers.patilu-api.entrypoints=websecure
+        - traefik.http.routers.patilu-api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.patilu-api.priority=100
+        - traefik.http.middlewares.patilu-api-stripprefix.stripprefix.prefixes=/api
+        - traefik.http.routers.patilu-api.middlewares=patilu-api-stripprefix
+        - traefik.http.services.patilu-api.loadbalancer.server.port=8000
+
+networks:
+  network_public:
+    external: true
