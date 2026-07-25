@@ -147,6 +147,7 @@ jobs:
 
   promote:
     name: Promote production images
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [build-web, build-cms, build-api]
     steps:
@@ -170,6 +171,7 @@ jobs:
 
   deploy:
     name: Trigger Portainer deployment
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: promote
     steps:
@@ -178,4 +180,12 @@ jobs:
           PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK }}
         run: |
           test -n "${PORTAINER_WEBHOOK:-}"
-          curl --fail --silent --show-error --request POST --url "$PORTAINER_WEBHOOK"
+          curl --fail --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --retry 2 \
+            --retry-delay 2 \
+            --retry-max-time 60 \
+            --retry-all-errors \
+            --request POST \
+            --url "$PORTAINER_WEBHOOK"

@@ -16,9 +16,9 @@ This slice creates the empty-workspace foundation for the Patilu managed catalog
 | API | `patilu-api/` | Minimal FastAPI app with a health endpoint and pytest smoke test. |
 | CMS | `patilu-cms/` | Minimal React + Vite boundary and package manifest. |
 
-## Out of scope for PR #1
+## Out of scope
 
-- Product, category, inquiry, auth, database, MinIO, trend, SEO page, analytics, deployment, or CMS workflow implementation.
+- Product, category, inquiry, auth, database, MinIO, trend, SEO page, analytics, or CMS workflow implementation.
 - Real WhatsApp numbers, social URLs, legal copy, shipping claims, prices, stock, testimonials, or credentials.
 
 ## Required external inputs

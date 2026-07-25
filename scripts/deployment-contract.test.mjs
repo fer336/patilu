@@ -137,13 +137,30 @@ for (const [job, nextJob] of [["build-web", "build-cms"], ["build-cms", "build-a
 
 const promotion = jobSection(workflow, "promote", "deploy");
 assertIncludes("promote job", promotion, /needs: \[build-web, build-cms, build-api\]/);
+assertIncludes("promote job", promotion, /if: github\.ref == 'refs\/heads\/main'/);
 assertIncludes("promote job", promotion, /images=\(patilu-web patilu-cms patilu-api\)/);
 assertIncludes("promote job", promotion, /docker buildx imagetools inspect .*:sha-\$\{\{ github\.sha \}\}/);
 assertIncludes("promote job", promotion, /docker buildx imagetools create --tag .*:production.*:sha-\$\{\{ github\.sha \}\}/);
 
 const deploy = jobSection(workflow, "deploy");
 assertIncludes("deploy job", deploy, /needs: promote/);
+assertIncludes("deploy job", deploy, /if: github\.ref == 'refs\/heads\/main'/);
 assertNotIncludes("deploy job", deploy, /needs: \[build-web, build-cms, build-api\]/);
+for (const option of [
+  /--connect-timeout 10/,
+  /--max-time 30/,
+  /--retry 2/,
+  /--retry-delay 2/,
+  /--retry-max-time 60/,
+  /--retry-all-errors/,
+]) {
+  assertIncludes("deploy job", deploy, option);
+}
+
+const readme = read("README.md");
+const outOfScope = readme.slice(readme.indexOf("## Out of scope"), readme.indexOf("## Required external inputs"));
+assertNotIncludes("README out-of-scope section", outOfScope, /\bdeployment\b/i);
+assertIncludes("README.md", readme, /## Deployment foundation/);
 
 const dependabot = read(".github/dependabot.yml");
 for (const directory of ["/", "/patilu-api", "/patilu-web", "/patilu-cms"]) {
