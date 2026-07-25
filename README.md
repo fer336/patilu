@@ -34,11 +34,28 @@ This slice creates the empty-workspace foundation for the Patilu managed catalog
 
 ## Deployment foundation
 
-Production deployment is image-only for Docker Swarm: GitHub Actions builds and publishes `patilu-web`, `patilu-cms`, and `patilu-api` images to GHCR with immutable `sha-*` tags plus the mutable `production` tag that Portainer pulls.
+Production deployment is image-only for Docker Swarm. Production images are built only by GitHub Actions, and server changes occur only after a GitHub Release with a stable SemVer tag such as `v1.0.0` is published from the current `main` HEAD.
+
+The repository remains on the bootstrap `production` image tag only until the first release workflow updates `docker-stack.yml`. After that migration, all three services stay pinned to the same immutable release version; the workflow never creates or deploys `latest` or mutable `production` tags.
 
 Operator checklist:
 
 1. Keep the external Swarm network named `network_public` available for Traefik.
-2. Configure the GitHub secret `PORTAINER_WEBHOOK`; the workflow calls it only after all three image pushes succeed.
+2. Configure the GitHub secret `PORTAINER_WEBHOOK` and grant GitHub Actions permission to write repository contents and GHCR packages.
 3. Deploy `docker-stack.yml` from Portainer so Traefik routes `patilu.qeva.xyz`, `cms-patilu.qeva.xyz`, and `/api` on the public host.
-4. Roll back through Portainer or by selecting a previous immutable GHCR `sha-*` tag for the affected service.
+4. Protect `main` while allowing the release workflow's normal bot push of the stack-only version commit.
+
+Release process:
+
+1. Merge and verify the intended release commit on `main`; do not move `main` while its release workflow is running.
+2. Create and publish a GitHub Release whose tag is exactly `vMAJOR.MINOR.PATCH` and whose target is the current `main` HEAD.
+3. GitHub Actions runs checks, builds all three `sha-<commit>` images, promotes them to the release tag, pins all three stack references, and pushes a conventional stack-only commit to `main`.
+4. Only after that commit succeeds does the workflow invoke Portainer, which pulls the updated repository and processes `docker-stack.yml`.
+
+Pushes to `main` and pull requests run CI checks only. They do not build production images, mutate the stack, or call Portainer. There is no manual production deployment workflow route.
+
+Rollback process:
+
+1. Identify the last known-good release and revert the faulty application changes on a branch without reverting the release workflow or stack-pinning infrastructure.
+2. Merge the revert to `main`, verify CI, and publish a new stable patch release from that exact `main` HEAD.
+3. Let the normal release workflow build and pin new images containing the reverted code. This is an auditable forward rollback; do not retag an existing release, point the stack directly at an old tag, or invoke Portainer manually.

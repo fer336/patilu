@@ -92,13 +92,12 @@ const stack = read("docker-stack.yml");
 for (const service of ["patilu-web", "patilu-cms", "patilu-api"]) {
   assertIncludes("docker-stack.yml", stack, new RegExp(`${service}:`));
 }
-for (const image of [
-  "ghcr.io/fer336/patilu-web:production",
-  "ghcr.io/fer336/patilu-cms:production",
-  "ghcr.io/fer336/patilu-api:production",
-]) {
-  assertIncludes("docker-stack.yml", stack, new RegExp(image.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-}
+const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/(patilu-(?:web|cms|api)):(\S+)/g)];
+assert.equal(stackImages.length, 3, "docker-stack.yml must contain exactly three Patilu images");
+assert.deepEqual(new Set(stackImages.map((match) => match[1])), new Set(["patilu-web", "patilu-cms", "patilu-api"]));
+assert.equal(new Set(stackImages.map((match) => match[2])).size, 1, "stack image tags must be coherent");
+assert.match(stackImages[0][2], /^(?:production|v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/);
+assertNotIncludes("docker-stack.yml", stack, /ghcr\.io\/fer336\/patilu-(?:web|cms|api):latest/);
 assertIncludes("docker-stack.yml", stack, /external: true/);
 assertIncludes("docker-stack.yml", stack, /network_public/);
 assertIncludes("docker-stack.yml", stack, /Host\(`patilu\.qeva\.xyz`\)/);
@@ -113,12 +112,14 @@ assertNotIncludes("docker-stack.yml", stack, /build:/);
 
 const workflow = read(".github/workflows/deploy.yml");
 assertIncludes(".github/workflows/deploy.yml", workflow, /on:/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /workflow_dispatch:/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /branches: \[main\]/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /pull_request:/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /release:\n    types: \[published\]/);
+assertNotIncludes(".github/workflows/deploy.yml", workflow, /workflow_dispatch:/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /contents: read/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /packages: write/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu-web test/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/deployment-contract\.test\.mjs/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/set-stack-version\.test\.mjs/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu-cms run typecheck/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /python -m pytest/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /docker\/build-push-action@v6/);
@@ -131,20 +132,53 @@ assertNotIncludes(".github/workflows/deploy.yml", workflow, /PORTAINER_WEBHOOK_U
 
 for (const [job, nextJob] of [["build-web", "build-cms"], ["build-cms", "build-api"], ["build-api", "promote"]]) {
   const buildJob = jobSection(workflow, job, nextJob);
+  assertIncludes(`${job} job`, buildJob, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
   assertIncludes(`${job} job`, buildJob, /:sha-\$\{\{ github\.sha \}\}/);
   assertNotIncludes(`${job} job`, buildJob, /:production/);
+  assertNotIncludes(`${job} job`, buildJob, /:latest/);
 }
 
-const promotion = jobSection(workflow, "promote", "deploy");
-assertIncludes("promote job", promotion, /needs: \[build-web, build-cms, build-api\]/);
-assertIncludes("promote job", promotion, /if: github\.ref == 'refs\/heads\/main'/);
+const validation = jobSection(workflow, "release-validation", "build-web");
+assertIncludes("release-validation job", validation, /\^v\(0\|\[1-9\]\[0-9\]\*\)/);
+assertIncludes("release-validation job", validation, /git rev-parse origin\/main/);
+assertIncludes("release-validation job", validation, /release_sha.*main_sha/);
+assertIncludes("release-validation job", validation, /node scripts\/set-stack-version\.mjs --validate-release-lineage/);
+assertIncludes("release-validation job", validation, /git diff-tree --no-commit-id --name-only/);
+
+const promotion = jobSection(workflow, "promote", "update-stack");
+assertIncludes("promote job", promotion, /needs: \[release-validation, build-web, build-cms, build-api\]/);
+assertIncludes("promote job", promotion, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
 assertIncludes("promote job", promotion, /images=\(patilu-web patilu-cms patilu-api\)/);
-assertIncludes("promote job", promotion, /docker buildx imagetools inspect .*:sha-\$\{\{ github\.sha \}\}/);
-assertIncludes("promote job", promotion, /docker buildx imagetools create --tag .*:production.*:sha-\$\{\{ github\.sha \}\}/);
+assertIncludes("promote job", promotion, /source=.*:sha-\$\{\{ github\.sha \}\}/);
+assertIncludes("promote job", promotion, /docker buildx imagetools inspect "\$source"/);
+assertIncludes("promote job", promotion, /github\.event\.release\.tag_name/);
+assertNotIncludes("promote job", promotion, /:(?:latest|production)/);
+
+const updateStack = jobSection(workflow, "update-stack", "deploy");
+assertIncludes("update-stack job", updateStack, /needs: \[release-validation, promote\]/);
+assertIncludes("update-stack job", updateStack, /contents: write/);
+assertIncludes("update-stack job", updateStack, /git rev-parse HEAD/);
+assertIncludes("update-stack job", updateStack, /git rev-parse origin\/main/);
+assertIncludes("update-stack job", updateStack, /node scripts\/set-stack-version\.mjs/);
+assertIncludes("update-stack job", updateStack, /git add docker-stack\.yml/);
+assertIncludes("update-stack job", updateStack, /git push origin main/);
+assertIncludes("update-stack job", updateStack, /EXPECTED_MAIN_SHA:.*main_sha/);
+assertIncludes("update-stack job", updateStack, /stack_sha=.*git rev-parse HEAD/);
+assertNotIncludes("update-stack job", updateStack, /--force/);
+assertNotIncludes("update-stack job", updateStack, /exit 0/);
+
+assert.equal((workflow.match(/contents: write/g) ?? []).length, 1, "only update-stack may write contents");
+for (const mutationJob of [promotion, updateStack, jobSection(workflow, "deploy")]) {
+  assertIncludes("mutation job", mutationJob, /if: github\.event_name == 'release'/);
+}
 
 const deploy = jobSection(workflow, "deploy");
-assertIncludes("deploy job", deploy, /needs: promote/);
-assertIncludes("deploy job", deploy, /if: github\.ref == 'refs\/heads\/main'/);
+assertIncludes("deploy job", deploy, /needs: \[release-validation, update-stack\]/);
+assertIncludes("deploy job", deploy, /github\.event\.action == 'published'/);
+assertIncludes("deploy job", deploy, /needs\.release-validation\.result == 'success'/);
+assertIncludes("deploy job", deploy, /permissions:\n      contents: read/);
+assertIncludes("deploy job", deploy, /ref: \$\{\{ needs\.update-stack\.outputs\.stack_sha \}\}/);
+assertIncludes("deploy job", deploy, /git rev-parse origin\/main.*needs\.update-stack\.outputs\.stack_sha/);
 assertNotIncludes("deploy job", deploy, /needs: \[build-web, build-cms, build-api\]/);
 for (const option of [
   /--connect-timeout 10/,

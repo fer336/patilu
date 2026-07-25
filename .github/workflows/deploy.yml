@@ -3,11 +3,12 @@ name: Deploy Patilu
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  pull_request:
+  release:
+    types: [published]
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: patilu-production
@@ -36,6 +37,9 @@ jobs:
 
       - name: Test deployment contract
         run: node scripts/deployment-contract.test.mjs
+
+      - name: Test stack version updater
+        run: node scripts/set-stack-version.test.mjs
 
       - name: Test public web
         run: npm --workspace patilu-web test
@@ -70,13 +74,63 @@ jobs:
         working-directory: patilu-api
         run: uv run python -m pytest
 
+  release-validation:
+    name: Validate production release
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+    outputs:
+      release_sha: ${{ steps.validate.outputs.release_sha }}
+      main_sha: ${{ steps.validate.outputs.main_sha }}
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Validate stable tag and main target
+        id: validate
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release tag must be stable SemVer (vMAJOR.MINOR.PATCH)." >&2
+            exit 1
+          fi
+          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            echo "GitHub prereleases cannot deploy to production." >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          release_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          main_sha="$(git rev-parse origin/main)"
+          export RELEASE_SHA="$release_sha" MAIN_SHA="$main_sha"
+          export PARENT_SHAS="$(git show -s --format=%P "$main_sha")"
+          export COMMIT_SUBJECT="$(git show -s --format=%s "$main_sha")"
+          export AUTHOR_NAME="$(git show -s --format=%an "$main_sha")"
+          export AUTHOR_EMAIL="$(git show -s --format=%ae "$main_sha")"
+          export COMMITTER_NAME="$(git show -s --format=%cn "$main_sha")"
+          export COMMITTER_EMAIL="$(git show -s --format=%ce "$main_sha")"
+          export CHANGED_FILES="$(git diff-tree --no-commit-id --name-only -r "$main_sha")"
+          git show "$main_sha:docker-stack.yml" > "$RUNNER_TEMP/main-stack.yml"
+          node scripts/set-stack-version.mjs --validate-release-lineage "$RUNNER_TEMP/main-stack.yml"
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+
   build-web:
     name: Build and publish web image
+    if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
-    needs: checks
+    needs: [checks, release-validation]
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Checkout
+      - name: Checkout release
         uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release-validation.outputs.release_sha }}
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -92,16 +146,21 @@ jobs:
           file: patilu-web/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-web:sha-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-web:sha-${{ github.sha }}
 
   build-cms:
     name: Build and publish CMS image
+    if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
-    needs: checks
+    needs: [checks, release-validation]
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Checkout
+      - name: Checkout release
         uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release-validation.outputs.release_sha }}
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -117,16 +176,21 @@ jobs:
           file: patilu-cms/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-cms:sha-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-cms:sha-${{ github.sha }}
 
   build-api:
     name: Build and publish API image
+    if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
-    needs: checks
+    needs: [checks, release-validation]
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Checkout
+      - name: Checkout release
         uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release-validation.outputs.release_sha }}
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -142,14 +206,15 @@ jobs:
           file: patilu-api/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-api:sha-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-api:sha-${{ github.sha }}
 
   promote:
-    name: Promote production images
-    if: github.ref == 'refs/heads/main'
+    name: Promote release images
+    if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
-    needs: [build-web, build-cms, build-api]
+    needs: [release-validation, build-web, build-cms, build-api]
+    permissions:
+      packages: write
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -159,26 +224,83 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Verify and promote images
+      - name: Promote immutable images to release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           images=(patilu-web patilu-cms patilu-api)
           for image in "${images[@]}"; do
-            docker buildx imagetools inspect "${REGISTRY}/${IMAGE_OWNER}/${image}:sha-${{ github.sha }}"
+            source="${REGISTRY}/${IMAGE_OWNER}/${image}:sha-${{ github.sha }}"
+            docker buildx imagetools inspect "$source"
+            docker buildx imagetools create --tag "${REGISTRY}/${IMAGE_OWNER}/${image}:${RELEASE_TAG}" "$source"
           done
-          for image in "${images[@]}"; do
-            docker buildx imagetools create --tag "${REGISTRY}/${IMAGE_OWNER}/${image}:production" "${REGISTRY}/${IMAGE_OWNER}/${image}:sha-${{ github.sha }}"
-          done
+
+  update-stack:
+    name: Pin stack to release
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+    needs: [release-validation, promote]
+    permissions:
+      contents: write
+    outputs:
+      stack_sha: ${{ steps.pin.outputs.stack_sha }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify main has not moved
+        env:
+          EXPECTED_MAIN_SHA: ${{ needs.release-validation.outputs.main_sha }}
+        run: |
+          git fetch --no-tags origin main
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA"
+          test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN_SHA"
+
+      - name: Pin stack images
+        run: node scripts/set-stack-version.mjs "${{ github.event.release.tag_name }}"
+
+      - name: Commit and push stack version
+        id: pin
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if git diff --quiet -- docker-stack.yml; then
+            echo "docker-stack.yml is already pinned to $RELEASE_TAG."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docker-stack.yml
+            test "$(git diff --cached --name-only)" = "docker-stack.yml"
+            git commit -m "chore(deploy): pin stack to $RELEASE_TAG"
+            git push origin main
+          fi
+          git fetch --no-tags origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          echo "stack_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   deploy:
     name: Trigger Portainer deployment
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'release' && github.event.action == 'published' && needs.release-validation.result == 'success'
     runs-on: ubuntu-latest
-    needs: promote
+    needs: [release-validation, update-stack]
+    permissions:
+      contents: read
     steps:
+      - name: Checkout resulting stack commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.update-stack.outputs.stack_sha }}
+          fetch-depth: 0
+
       - name: Invoke Portainer webhook
         env:
           PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK }}
         run: |
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "${{ needs.update-stack.outputs.stack_sha }}"
           test -n "${PORTAINER_WEBHOOK:-}"
           curl --fail --silent --show-error \
             --connect-timeout 10 \
