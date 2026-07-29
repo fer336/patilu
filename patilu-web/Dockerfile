@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY patilu-web/package.json patilu-web/package.json
@@ -7,7 +7,7 @@ RUN npm ci
 COPY patilu-web ./patilu-web
 RUN npm --workspace patilu-web run build
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV HOST=0.0.0 PORT=8080 NODE_ENV=production
 WORKDIR /workspace
 COPY --from=build --chown=node:node /workspace/node_modules ./node_modules
