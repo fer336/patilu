@@ -39,7 +39,21 @@ Production deployment is image-only for Docker Swarm. Production images are buil
 
 ### Catalog environment
 
-The stack requires `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, and `MINIO_ROOT_PASSWORD` in Portainer's stack environment. Passwords are placeholders by design and MUST NOT be committed. If the PostgreSQL password contains URL-reserved characters, provide its percent-encoded form because it is interpolated into `DATABASE_URL`.
+All secret configuration lives in external Docker Swarm secrets; the stack declares no compose variable interpolation and Portainer needs no stack environment variables. These four secrets MUST exist in the Swarm before the stack is deployed:
+
+| Secret | Contents |
+|---|---|
+| `patilu_postgres_password` | Password of the PostgreSQL `patilu` role; mounted at `/run/secrets/patilu_postgres_password` and consumed via `POSTGRES_PASSWORD_FILE`. |
+| `patilu_minio_root_user` | MinIO root user; consumed via `MINIO_ROOT_USER_FILE`. |
+| `patilu_minio_root_password` | MinIO root password; consumed via `MINIO_ROOT_PASSWORD_FILE`. |
+| `patilu_backend_env` | Complete dotenv document for the API, mounted at `/run/secrets/backend.env` with mode `0444`. Must define `DATABASE_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, and `API_ADMIN_TOKEN`. |
+
+Create them on a Swarm manager with `docker secret create <name> <file>` (for example, `printf '%s' 'value' | docker secret create patilu_postgres_password -`) or through Portainer's Secrets view. The stack references them as `external: true`, so the names must match exactly.
+
+> [!WARNING]
+> The `postgres_data` and `minio_data` volumes are already initialized in production. The secret VALUES MUST MATCH the current production credentials — including the credentials embedded in `DATABASE_URL`, `MINIO_ACCESS_KEY`, and `MINIO_SECRET_KEY` inside `patilu_backend_env` — or PostgreSQL authentication and MinIO/storage access break. Changing a secret value does not reinitialize the existing volumes.
+
+Passwords are placeholders by design and MUST NOT be committed. If the PostgreSQL password contains URL-reserved characters, use its percent-encoded form inside the `DATABASE_URL` value of `patilu_backend_env`.
 
 The API runs `alembic upgrade head` before starting. PostgreSQL and MinIO data live in the named volumes `postgres_data` and `minio_data`; both require an operator backup policy. MinIO's S3 API is exposed only at `media-patilu.qeva.xyz` for public read access to product objects, while its administration console remains internal.
 
@@ -55,8 +69,9 @@ Operator checklist:
 
 1. Keep the external Swarm network named `network_public` available for Traefik and create DNS for `media-patilu.qeva.xyz`.
 2. Configure the GitHub secret `PORTAINER_WEBHOOK` and grant GitHub Actions permission to write repository contents and GHCR packages.
-3. Deploy `docker-stack.yml` from Portainer so Traefik routes `patilu.qeva.xyz`, `cms-patilu.qeva.xyz`, and `/api` on the public host.
-4. Protect `main` while allowing the release workflow's normal bot push of the stack-only version commit.
+3. Create the four external Swarm secrets listed in [Catalog environment](#catalog-environment) with values matching the current production credentials; the stack deploy fails until they exist.
+4. Deploy `docker-stack.yml` from Portainer so Traefik routes `patilu.qeva.xyz`, `cms-patilu.qeva.xyz`, and `/api` on the public host.
+5. Protect `main` while allowing the release workflow's normal bot push of the stack-only version commit.
 
 Release process:
 
