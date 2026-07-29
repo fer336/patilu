@@ -48,18 +48,15 @@ const webDockerfile = read("patilu-web/Dockerfile");
 assertIncludes("patilu-web/Dockerfile", webDockerfile, /FROM node:.* AS build/);
 assertIncludes("patilu-web/Dockerfile", webDockerfile, /npm ci/);
 assertIncludes("patilu-web/Dockerfile", webDockerfile, /npm --workspace patilu-web run build/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /FROM nginxinc\/nginx-unprivileged:/);
+assertIncludes("patilu-web/Dockerfile", webDockerfile, /FROM node:.* AS runtime/);
 assertIncludes("patilu-web/Dockerfile", webDockerfile, /EXPOSE 8080/);
 assertIncludes("patilu-web/Dockerfile", webDockerfile, /COPY --from=build .*patilu-web\/dist/);
-
-const webNginx = read("patilu-web/nginx.conf");
-assertIncludes("patilu-web/nginx.conf", webNginx, /listen 8080/);
-assertIncludes("patilu-web/nginx.conf", webNginx, /location = \/healthz/);
-assertIncludes("patilu-web/nginx.conf", webNginx, /location \/_astro\//);
-assertIncludes("patilu-web/nginx.conf", webNginx, /immutable/);
-assertIncludes("patilu-web/nginx.conf", webNginx, /location ~\* \^\/assets\/.*\\\.webp\$/);
-assertIncludes("patilu-web/nginx.conf", webNginx, /no-cache/);
-assertNotIncludes("patilu-web/nginx.conf", webNginx, /try_files \$uri \/index\.html/);
+assertIncludes("patilu-web/Dockerfile", webDockerfile, /dist\/server\/entry\.mjs/);
+assertIncludes("patilu-web/Dockerfile", webDockerfile, /USER node/);
+assertIncludes("patilu-web/Dockerfile", webDockerfile, /node:net/);
+assertIncludes("patilu-web/Dockerfile", webDockerfile, /port:8080/);
+assertNotIncludes("patilu-web/Dockerfile", webDockerfile, /127\.0\.0\.1:8080\//);
+assertNotIncludes("patilu-web/Dockerfile", webDockerfile, /fetch\(|\/healthz/);
 
 const cmsDockerfile = read("patilu-cms/Dockerfile");
 assertIncludes("patilu-cms/Dockerfile", cmsDockerfile, /FROM node:.* AS build/);
@@ -82,6 +79,7 @@ assertIncludes("patilu-api/Dockerfile", apiDockerfile, /useradd/);
 assertIncludes("patilu-api/Dockerfile", apiDockerfile, /USER app/);
 assertIncludes("patilu-api/Dockerfile", apiDockerfile, /EXPOSE 8000/);
 assertIncludes("patilu-api/Dockerfile", apiDockerfile, /uvicorn app\.main:app/);
+assertIncludes("patilu-api/Dockerfile", apiDockerfile, /python -m app\.database/);
 assertIncludes("patilu-api/Dockerfile", apiDockerfile, /--proxy-headers/);
 assertIncludes("patilu-api/Dockerfile", apiDockerfile, /--forwarded-allow-ips=\*/);
 assertIncludes("patilu-api/Dockerfile", apiDockerfile, /--root-path \/api/);
@@ -89,7 +87,11 @@ assertIncludes("patilu-api/Dockerfile", apiDockerfile, /HEALTHCHECK/);
 assertNotIncludes("patilu-api/Dockerfile", apiDockerfile, /CORS|SECRET/);
 
 const stack = read("docker-stack.yml");
+const webService = stack.slice(stack.indexOf("  patilu-web:"), stack.indexOf("  patilu-cms:"));
 for (const service of ["patilu-web", "patilu-cms", "patilu-api"]) {
+  assertIncludes("docker-stack.yml", stack, new RegExp(`${service}:`));
+}
+for (const service of ["postgres", "minio"]) {
   assertIncludes("docker-stack.yml", stack, new RegExp(`${service}:`));
 }
 const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/(patilu-(?:web|cms|api)):(\S+)/g)];
@@ -100,6 +102,19 @@ assert.match(stackImages[0][2], /^(?:production|v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\
 assertNotIncludes("docker-stack.yml", stack, /ghcr\.io\/fer336\/patilu-(?:web|cms|api):latest/);
 assertIncludes("docker-stack.yml", stack, /external: true/);
 assertIncludes("docker-stack.yml", stack, /network_public/);
+assertIncludes("docker-stack.yml", stack, /network_internal/);
+assertIncludes("docker-stack.yml", stack, /postgres_data/);
+assertIncludes("docker-stack.yml", stack, /minio_data/);
+assertIncludes("docker-stack.yml", stack, /POSTGRES_PASSWORD/);
+assertIncludes("docker-stack.yml", stack, /MINIO_ROOT_PASSWORD/);
+assertIncludes("docker-stack.yml", stack, /API_ADMIN_TOKEN: \$\{API_ADMIN_TOKEN:\?Set API_ADMIN_TOKEN in Portainer\}/);
+assertIncludes("docker-stack.yml", stack, /start_period: 75s/);
+assertIncludes("docker-stack.yml", stack, /API_INTERNAL_URL/);
+assertIncludes("docker-stack.yml patilu-web service", webService, /node:net/);
+assertIncludes("docker-stack.yml patilu-web service", webService, /port:8080/);
+assertNotIncludes("docker-stack.yml patilu-web service", webService, /127\.0\.0\.1:8080\//);
+assertNotIncludes("docker-stack.yml patilu-web service", webService, /fetch\(|\/healthz/);
+assertIncludes("docker-stack.yml", stack, /media-patilu\.qeva\.xyz/);
 assertIncludes("docker-stack.yml", stack, /Host\(`patilu\.qeva\.xyz`\)/);
 assertIncludes("docker-stack.yml", stack, /Host\(`cms-patilu\.qeva\.xyz`\)/);
 assertIncludes("docker-stack.yml", stack, /PathPrefix\(`\/api`\)/);
