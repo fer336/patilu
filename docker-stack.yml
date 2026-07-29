@@ -48,7 +48,7 @@ services:
         - traefik.http.services.patilu-media.loadbalancer.server.port=9000
 
   patilu-web:
-    image: ghcr.io/fer336/patilu-web:production
+    image: ghcr.io/fer336/patilu-web:v0.1.0
     environment:
       API_INTERNAL_URL: http://patilu-api:8000
     networks:
@@ -82,7 +82,7 @@ services:
         - traefik.http.services.patilu-web.loadbalancer.server.port=8080
 
   patilu-cms:
-    image: ghcr.io/fer336/patilu-cms:production
+    image: ghcr.io/fer336/patilu-cms:v0.1.0
     networks:
       - network_public
     healthcheck:
@@ -104,7 +104,7 @@ services:
         - traefik.http.services.patilu-cms.loadbalancer.server.port=8080
 
   patilu-api:
-    image: ghcr.io/fer336/patilu-api:production
+    image: ghcr.io/fer336/patilu-api:v0.1.0
     environment:
       DATABASE_URL: postgresql+psycopg://patilu:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}@postgres:5432/patilu
       CORS_ORIGINS: '["https://cms-patilu.qeva.xyz","http://localhost:5173"]'
