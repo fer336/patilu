@@ -6,7 +6,9 @@ services:
     environment:
       POSTGRES_DB: patilu
       POSTGRES_USER: patilu
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
+      POSTGRES_PASSWORD_FILE: /run/secrets/patilu_postgres_password
+    secrets:
+      - patilu_postgres_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -24,8 +26,11 @@ services:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in Portainer}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in Portainer}
+      MINIO_ROOT_USER_FILE: /run/secrets/patilu_minio_root_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/patilu_minio_root_password
+    secrets:
+      - patilu_minio_root_user
+      - patilu_minio_root_password
     volumes:
       - minio_data:/data
     networks:
@@ -106,15 +111,15 @@ services:
   patilu-api:
     image: ghcr.io/fer336/patilu-api:v0.1.0
     environment:
-      DATABASE_URL: postgresql+psycopg://patilu:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}@postgres:5432/patilu
       CORS_ORIGINS: '["https://cms-patilu.qeva.xyz","http://localhost:5173"]'
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in Portainer}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in Portainer}
       MINIO_BUCKET: product-images
       MINIO_SECURE: "false"
       MEDIA_PUBLIC_URL: https://media-patilu.qeva.xyz/product-images
-      API_ADMIN_TOKEN: ${API_ADMIN_TOKEN:?Set API_ADMIN_TOKEN in Portainer}
+    secrets:
+      - source: patilu_backend_env
+        target: /run/secrets/backend.env
+        mode: 0444
     networks:
       - network_public
       - network_internal
@@ -149,3 +154,13 @@ networks:
 volumes:
   postgres_data:
   minio_data:
+
+secrets:
+  patilu_postgres_password:
+    external: true
+  patilu_minio_root_user:
+    external: true
+  patilu_minio_root_password:
+    external: true
+  patilu_backend_env:
+    external: true
