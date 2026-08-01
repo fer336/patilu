@@ -13,7 +13,7 @@ RUN npm ci
 COPY patilu-cms ./patilu-cms
 RUN npm --workspace patilu-cms run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 
 COPY patilu-cms/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /workspace/patilu-cms/dist /usr/share/nginx/html
