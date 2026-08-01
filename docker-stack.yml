@@ -1,43 +1,10 @@
 version: "3.8"
 
 services:
-  minio:
-    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER_FILE: /run/secrets/patilu_minio_root_user
-      MINIO_ROOT_PASSWORD_FILE: /run/secrets/patilu_minio_root_password
-    secrets:
-      - patilu_minio_root_user
-      - patilu_minio_root_password
-    volumes:
-      - minio_data:/data
-    networks:
-      - network_internal
-      - network_public
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    deploy:
-      restart_policy:
-        condition: on-failure
-      labels:
-        - traefik.enable=true
-        - traefik.docker.network=network_public
-        - traefik.http.routers.patilu-media.rule=Host(`media-patilu.qeva.xyz`)
-        - traefik.http.routers.patilu-media.entrypoints=websecure
-        - traefik.http.routers.patilu-media.tls.certresolver=letsencryptresolver
-        - traefik.http.services.patilu-media.loadbalancer.server.port=9000
-
   patilu-web:
-    image: ghcr.io/fer336/patilu-web:v0.1.0
-    environment:
-      API_INTERNAL_URL: http://patilu-api:8000
+    image: ghcr.io/fer336/patilu-web:production
     networks:
       - network_public
-      - network_internal
     healthcheck:
       test: ["CMD", "node", "-e", "const net=require('node:net');const socket=net.connect({host:'127.0.0.1',port:8080});socket.setTimeout(2000);socket.once('connect',()=>{socket.end();process.exit(0)});socket.once('timeout',()=>{socket.destroy();process.exit(1)});socket.once('error',()=>process.exit(1));"]
       interval: 30s
@@ -45,14 +12,14 @@ services:
       retries: 3
       start_period: 15s
     deploy:
-      update_config: &update_config
+      update_config:
         order: start-first
         failure_action: rollback
         parallelism: 1
-      rollback_config: &rollback_config
+      rollback_config:
         order: stop-first
         parallelism: 1
-      restart_policy: &restart_policy
+      restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
@@ -62,81 +29,8 @@ services:
         - traefik.http.routers.patilu-web.rule=Host(`patilu.qeva.xyz`)
         - traefik.http.routers.patilu-web.entrypoints=websecure
         - traefik.http.routers.patilu-web.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.patilu-web.priority=10
         - traefik.http.services.patilu-web.loadbalancer.server.port=8080
-
-  patilu-cms:
-    image: ghcr.io/fer336/patilu-cms:v0.1.0
-    networks:
-      - network_public
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-    deploy:
-      update_config: *update_config
-      rollback_config: *rollback_config
-      restart_policy: *restart_policy
-      labels:
-        - traefik.enable=true
-        - traefik.docker.network=network_public
-        - traefik.http.routers.patilu-cms.rule=Host(`cms-patilu.qeva.xyz`)
-        - traefik.http.routers.patilu-cms.entrypoints=websecure
-        - traefik.http.routers.patilu-cms.tls.certresolver=letsencryptresolver
-        - traefik.http.services.patilu-cms.loadbalancer.server.port=8080
-
-  patilu-api:
-    image: ghcr.io/fer336/patilu-api:v0.1.0
-    environment:
-      CORS_ORIGINS: '["https://cms-patilu.qeva.xyz","http://localhost:5173"]'
-      MINIO_ENDPOINT: minio:9000
-      MINIO_BUCKET: product-images
-      MINIO_SECURE: "false"
-      MEDIA_PUBLIC_URL: https://media-patilu.qeva.xyz/product-images
-    secrets:
-      - source: patilu_backend_env
-        target: /run/secrets/backend.env
-        mode: 0444
-    networks:
-      - network_public
-      - network_internal
-    healthcheck:
-      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 75s
-    deploy:
-      update_config: *update_config
-      rollback_config: *rollback_config
-      restart_policy: *restart_policy
-      labels:
-        - traefik.enable=true
-        - traefik.docker.network=network_public
-        - traefik.http.routers.patilu-api.rule=Host(`patilu.qeva.xyz`) && PathPrefix(`/api`)
-        - traefik.http.routers.patilu-api.entrypoints=websecure
-        - traefik.http.routers.patilu-api.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.patilu-api.priority=100
-        - traefik.http.middlewares.patilu-api-stripprefix.stripprefix.prefixes=/api
-        - traefik.http.routers.patilu-api.middlewares=patilu-api-stripprefix
-        - traefik.http.services.patilu-api.loadbalancer.server.port=8000
 
 networks:
   network_public:
-    external: true
-  network_internal:
-    driver: overlay
-    attachable: false
-
-volumes:
-  minio_data:
-
-secrets:
-  patilu_minio_root_user:
-    external: true
-  patilu_minio_root_password:
-    external: true
-  patilu_backend_env:
     external: true

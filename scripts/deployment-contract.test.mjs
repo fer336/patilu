@@ -44,85 +44,43 @@ for (const pattern of [
 }
 assertNotIncludes(".dockerignore", dockerignore, /package-lock\.json/);
 
-const webDockerfile = read("patilu-web/Dockerfile");
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /FROM node:.* AS build/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /npm ci/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /npm --workspace patilu-web run build/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /FROM node:.* AS runtime/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /EXPOSE 8080/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /COPY --from=build .*patilu-web\/dist/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /dist\/server\/entry\.mjs/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /USER node/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /node:net/);
-assertIncludes("patilu-web/Dockerfile", webDockerfile, /port:8080/);
-assertNotIncludes("patilu-web/Dockerfile", webDockerfile, /127\.0\.0\.1:8080\//);
-assertNotIncludes("patilu-web/Dockerfile", webDockerfile, /fetch\(|\/healthz/);
-
-const cmsDockerfile = read("patilu-cms/Dockerfile");
-assertIncludes("patilu-cms/Dockerfile", cmsDockerfile, /FROM node:.* AS build/);
-assertIncludes("patilu-cms/Dockerfile", cmsDockerfile, /npm ci/);
-assertIncludes("patilu-cms/Dockerfile", cmsDockerfile, /npm --workspace patilu-cms run build/);
-assertIncludes("patilu-cms/Dockerfile", cmsDockerfile, /FROM nginxinc\/nginx-unprivileged:/);
-assertIncludes("patilu-cms/Dockerfile", cmsDockerfile, /EXPOSE 8080/);
-
-const cmsNginx = read("patilu-cms/nginx.conf");
-assertIncludes("patilu-cms/nginx.conf", cmsNginx, /listen 8080/);
-assertIncludes("patilu-cms/nginx.conf", cmsNginx, /location = \/healthz/);
-assertIncludes("patilu-cms/nginx.conf", cmsNginx, /location \/assets\//);
-assertIncludes("patilu-cms/nginx.conf", cmsNginx, /try_files \$uri =404/);
-assertIncludes("patilu-cms/nginx.conf", cmsNginx, /try_files \$uri \$uri\/ \/index\.html/);
-assertIncludes("patilu-cms/nginx.conf", cmsNginx, /immutable/);
-
-const apiDockerfile = read("patilu-api/Dockerfile");
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /FROM python:3\.12-slim/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /useradd/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /USER app/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /EXPOSE 8000/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /uvicorn app\.main:app/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /python -m app\.database/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /--proxy-headers/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /--forwarded-allow-ips=\*/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /--root-path \/api/);
-assertIncludes("patilu-api/Dockerfile", apiDockerfile, /HEALTHCHECK/);
-assertNotIncludes("patilu-api/Dockerfile", apiDockerfile, /CORS|SECRET/);
+const webDockerfile = read("patilu/Dockerfile");
+assertIncludes("patilu/Dockerfile", webDockerfile, /FROM node:.* AS build/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /npm ci/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /npm run build/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /FROM node:.* AS runtime/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /EXPOSE 8080/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /COPY --from=build .*dist/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /dist\/server\/entry\.mjs/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /USER node/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /node:net/);
+assertIncludes("patilu/Dockerfile", webDockerfile, /port:8080/);
+assertNotIncludes("patilu/Dockerfile", webDockerfile, /127\.0\.0\.1:8080\//);
+assertNotIncludes("patilu/Dockerfile", webDockerfile, /fetch\(|\/healthz/);
 
 const stack = read("docker-stack.yml");
-const webService = stack.slice(stack.indexOf("  patilu-web:"), stack.indexOf("  patilu-cms:"));
-for (const service of ["patilu-web", "patilu-cms", "patilu-api"]) {
-  assertIncludes("docker-stack.yml", stack, new RegExp(`${service}:`));
-}
-assertIncludes("docker-stack.yml", stack, /minio:/);
-assertNotIncludes("docker-stack.yml", stack, /^ {2}postgres:/m);
-const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/(patilu-(?:web|cms|api)):(\S+)/g)];
-assert.equal(stackImages.length, 3, "docker-stack.yml must contain exactly three Patilu images");
-assert.deepEqual(new Set(stackImages.map((match) => match[1])), new Set(["patilu-web", "patilu-cms", "patilu-api"]));
-assert.equal(new Set(stackImages.map((match) => match[2])).size, 1, "stack image tags must be coherent");
+assertIncludes("docker-stack.yml", stack, /patilu-web:/);
+assertNotIncludes("docker-stack.yml", stack, /patilu-cms:/);
+assertNotIncludes("docker-stack.yml", stack, /patilu-api:/);
+assertNotIncludes("docker-stack.yml", stack, /^ {2}minio:/m);
+const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/(patilu-web):(\S+)/g)];
+assert.equal(stackImages.length, 1, "docker-stack.yml must contain exactly one Patilu image");
 assert.match(stackImages[0][2], /^(?:production|v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/);
-assertNotIncludes("docker-stack.yml", stack, /ghcr\.io\/fer336\/patilu-(?:web|cms|api):latest/);
+assertNotIncludes("docker-stack.yml", stack, /ghcr\.io\/fer336\/patilu-web:latest/);
 assertIncludes("docker-stack.yml", stack, /external: true/);
 assertIncludes("docker-stack.yml", stack, /network_public/);
-assertIncludes("docker-stack.yml", stack, /network_internal/);
-assertIncludes("docker-stack.yml", stack, /minio_data/);
+assertNotIncludes("docker-stack.yml", stack, /minio_data/);
 assertNotIncludes("docker-stack.yml", stack, /postgres_data/);
-assertNotIncludes("docker-stack.yml", stack, /patilu_postgres_password/);
-assertIncludes("docker-stack.yml", stack, /MINIO_ROOT_USER_FILE: \/run\/secrets\/patilu_minio_root_user/);
-assertIncludes("docker-stack.yml", stack, /MINIO_ROOT_PASSWORD_FILE: \/run\/secrets\/patilu_minio_root_password/);
-assertIncludes("docker-stack.yml", stack, /patilu_backend_env/);
-assertIncludes("docker-stack.yml", stack, /target: \/run\/secrets\/backend\.env/);
-assertNotIncludes("docker-stack.yml", stack, /\$\{[A-Z_]+:\?/);
-assertNotIncludes("docker-stack.yml", stack, /API_ADMIN_TOKEN: \$/);
-assertIncludes("docker-stack.yml", stack, /start_period: 75s/);
-assertIncludes("docker-stack.yml", stack, /API_INTERNAL_URL/);
-assertIncludes("docker-stack.yml patilu-web service", webService, /node:net/);
-assertIncludes("docker-stack.yml patilu-web service", webService, /port:8080/);
-assertNotIncludes("docker-stack.yml patilu-web service", webService, /127\.0\.0\.1:8080\//);
-assertNotIncludes("docker-stack.yml patilu-web service", webService, /fetch\(|\/healthz/);
-assertIncludes("docker-stack.yml", stack, /media-patilu\.qeva\.xyz/);
+assertNotIncludes("docker-stack.yml", stack, /secrets:/);
+assertNotIncludes("docker-stack.yml", stack, /API_INTERNAL_URL/);
+assertIncludes("docker-stack.yml", stack, /node:net/);
+assertIncludes("docker-stack.yml", stack, /port:8080/);
+assertNotIncludes("docker-stack.yml", stack, /127\.0\.0\.1:8080\//);
+assertNotIncludes("docker-stack.yml", stack, /fetch\(|\/healthz/);
 assertIncludes("docker-stack.yml", stack, /Host\(`patilu\.qeva\.xyz`\)/);
-assertIncludes("docker-stack.yml", stack, /Host\(`cms-patilu\.qeva\.xyz`\)/);
-assertIncludes("docker-stack.yml", stack, /PathPrefix\(`\/api`\)/);
-assertIncludes("docker-stack.yml", stack, /stripprefix/);
-assertIncludes("docker-stack.yml", stack, /priority=100/);
+assertNotIncludes("docker-stack.yml", stack, /Host\(`cms-patilu\.qeva\.xyz`\)/);
+assertNotIncludes("docker-stack.yml", stack, /PathPrefix\(`\/api`\)/);
+assertNotIncludes("docker-stack.yml", stack, /media-patilu\.qeva\.xyz/);
 assertIncludes("docker-stack.yml", stack, /websecure/);
 assertIncludes("docker-stack.yml", stack, /letsencryptresolver/);
 assertNotIncludes("docker-stack.yml", stack, /ports:/);
@@ -135,11 +93,11 @@ assertIncludes(".github/workflows/deploy.yml", workflow, /pull_request:/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /release:\n    types: \[published\]/);
 assertNotIncludes(".github/workflows/deploy.yml", workflow, /workflow_dispatch:/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /contents: read/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu-web test/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/deployment-contract\.test\.mjs/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/set-stack-version\.test\.mjs/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu-cms run typecheck/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /python -m pytest/);
+assertNotIncludes(".github/workflows/deploy.yml", workflow, /patilu-cms/);
+assertNotIncludes(".github/workflows/deploy.yml", workflow, /patilu-api/);
+assertNotIncludes(".github/workflows/deploy.yml", workflow, /python -m pytest/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /docker\/build-push-action@v6/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /platforms: linux\/amd64/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /sha-\$\{\{ github\.sha \}\}/);
@@ -148,13 +106,19 @@ assertIncludes(".github/workflows/deploy.yml", workflow, /test -n "\$\{PORTAINER
 assertIncludes(".github/workflows/deploy.yml", workflow, /--url "\$PORTAINER_WEBHOOK"/);
 assertNotIncludes(".github/workflows/deploy.yml", workflow, /PORTAINER_WEBHOOK_URL/);
 
-for (const [job, nextJob] of [["build-web", "build-cms"], ["build-cms", "build-api"], ["build-api", "promote"]]) {
-  const buildJob = jobSection(workflow, job, nextJob);
-  assertIncludes(`${job} job`, buildJob, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
-  assertIncludes(`${job} job`, buildJob, /:sha-\$\{\{ github\.sha \}\}/);
-  assertNotIncludes(`${job} job`, buildJob, /:production/);
-  assertNotIncludes(`${job} job`, buildJob, /:latest/);
-}
+const checks = jobSection(workflow, "checks", "release-validation");
+assertIncludes("checks job", checks, /working-directory: patilu\n\s*run: npm ci/);
+assertIncludes("checks job", checks, /working-directory: patilu\n\s*run: npm test/);
+assertIncludes("checks job", checks, /working-directory: patilu\n\s*run: npm run typecheck/);
+assertIncludes("checks job", checks, /working-directory: patilu\n\s*run: npm run build/);
+
+const buildJob = jobSection(workflow, "build-web", "promote");
+assertIncludes("build-web job", buildJob, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
+assertIncludes("build-web job", buildJob, /:sha-\$\{\{ github\.sha \}\}/);
+assertIncludes("build-web job", buildJob, /context: patilu/);
+assertIncludes("build-web job", buildJob, /file: patilu\/Dockerfile/);
+assertNotIncludes("build-web job", buildJob, /:production/);
+assertNotIncludes("build-web job", buildJob, /:latest/);
 
 const validation = jobSection(workflow, "release-validation", "build-web");
 assertIncludes("release-validation job", validation, /\^v\(0\|\[1-9\]\[0-9\]\*\)/);
@@ -164,9 +128,9 @@ assertIncludes("release-validation job", validation, /node scripts\/set-stack-ve
 assertIncludes("release-validation job", validation, /git diff-tree --no-commit-id --name-only/);
 
 const promotion = jobSection(workflow, "promote", "update-stack");
-assertIncludes("promote job", promotion, /needs: \[release-validation, build-web, build-cms, build-api\]/);
+assertIncludes("promote job", promotion, /needs: \[release-validation, build-web\]/);
 assertIncludes("promote job", promotion, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
-assertIncludes("promote job", promotion, /images=\(patilu-web patilu-cms patilu-api\)/);
+assertIncludes("promote job", promotion, /images=\(patilu-web\)/);
 assertIncludes("promote job", promotion, /source=.*:sha-\$\{\{ github\.sha \}\}/);
 assertIncludes("promote job", promotion, /docker buildx imagetools inspect "\$source"/);
 assertIncludes("promote job", promotion, /github\.event\.release\.tag_name/);
@@ -197,7 +161,7 @@ assertIncludes("deploy job", deploy, /needs\.release-validation\.result == 'succ
 assertIncludes("deploy job", deploy, /permissions:\n      contents: read/);
 assertIncludes("deploy job", deploy, /ref: \$\{\{ needs\.update-stack\.outputs\.stack_sha \}\}/);
 assertIncludes("deploy job", deploy, /git rev-parse origin\/main.*needs\.update-stack\.outputs\.stack_sha/);
-assertNotIncludes("deploy job", deploy, /needs: \[build-web, build-cms, build-api\]/);
+assertNotIncludes("deploy job", deploy, /needs: \[build-web/);
 for (const option of [
   /--connect-timeout 10/,
   /--max-time 30/,
@@ -215,15 +179,16 @@ assertNotIncludes("README out-of-scope section", outOfScope, /\bdeployment\b/i);
 assertIncludes("README.md", readme, /## Deployment foundation/);
 
 const dependabot = read(".github/dependabot.yml");
-for (const directory of ["/", "/patilu-api", "/patilu-web", "/patilu-cms"]) {
+for (const directory of ["/", "/patilu"]) {
   assertIncludes(".github/dependabot.yml", dependabot, new RegExp(`directory: "${directory}"`));
 }
+assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "npm"/);
 assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "github-actions"/);
 assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "docker"/);
-assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "uv"/);
+assertNotIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "uv"/);
 assertIncludes(".github/dependabot.yml", dependabot, /groups:/);
 
-const astroConfig = read("patilu-web/astro.config.mjs");
-assertIncludes("patilu-web/astro.config.mjs", astroConfig, /site: "https:\/\/patilu\.qeva\.xyz"/);
+const astroConfig = read("patilu/astro.config.mjs");
+assertIncludes("patilu/astro.config.mjs", astroConfig, /site: "https:\/\/patilu\.qeva\.xyz"/);
 
 console.log("deployment contract passed");

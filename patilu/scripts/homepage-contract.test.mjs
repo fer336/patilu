@@ -82,9 +82,8 @@ for (const requiredCopy of [
 
 assert.match(siteSource, /getPublishedProducts/);
 assert.match(siteSource, /getPrimaryImage/);
-assert.match(catalogSource, /API_INTERNAL_URL/);
-assert.match(catalogSource, /ALLOW_CATALOG_FALLBACK !== "false"/);
-assert.match(catalogSource, /response\.status === 404\) return null/);
+assert.doesNotMatch(catalogSource, /API_INTERNAL_URL/);
+assert.doesNotMatch(catalogSource, /fetch\(/);
 assert.match(catalogSource, /price: null/);
 assert.match(catalogSource, /availability: "made_to_order"/);
 assert.doesNotMatch(catalogSource, /price: product\.price/);

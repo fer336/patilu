@@ -1,6 +1,7 @@
 node_modules/
 .atl/
 .playwright-mcp/
+.impeccable/
 dist/
 .astro/
 .vite/
