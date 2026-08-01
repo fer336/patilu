@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+
+const principles = [
+  ["Consulta clara", "Cada pedido se confirma con disponibilidad, precio y detalles antes de avanzar."],
+  ["Hecho a mano", "Las piezas se trabajan punto por punto, con atención al acabado y al uso."],
+  ["Diseño conversado", "Los encargos personalizados se evalúan según idea, colores, tamaño y referencias."],
+];
+---
+<BaseLayout
+  title="Sobre Patilu | Muñecos tejidos al crochet en Pinamar"
+  description="Conocé la historia de Patilu, un proyecto artesanal de muñecos tejidos al crochet hecho en Pinamar."
+  activePath="/sobre-patilu"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Sobre Patilu" }]} />
+  <section class="section story-section">
+    <div class="container story-grid">
+      <img class="story-image" src="/assets/artesana.webp" alt="Manos tejiendo una pieza al crochet" loading="lazy" />
+      <div class="story-copy"><p class="eyebrow">El corazón de Patilu</p><h1>Muñecos creados con tiempo y dedicación</h1><p>Patilu es un proyecto artesanal hecho en Pinamar. Cada muñeco está tejido a mano con dedicación, cuidado por los detalles e intención de acompañar historias cotidianas.</p><p class="location-note">♡ Hecho a mano en Pinamar, Argentina.</p></div>
+      <div class="testimonials"><div class="section-heading compact"><h2>Principios de consulta <span aria-hidden="true">♡</span></h2></div><div class="testimonial-grid">{principles.map(([h, p]) => <blockquote><p>{p}</p><footer>{h}</footer></blockquote>)}</div></div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .story-section{background:linear-gradient(180deg,#fdf1e7 0%,#fffaf4 100%)}.story-grid{display:grid;grid-template-columns:.65fr .8fr 1.55fr;gap:34px;align-items:stretch}.story-image{height:100%;min-height:360px;border-radius:24px;object-fit:cover;box-shadow:var(--shadow-sm)}.story-copy{display:flex;flex-direction:column;justify-content:center}.location-note{color:var(--primary-dark);font-weight:800}.testimonials{align-self:center}.testimonial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}blockquote{margin:0;padding:20px;border:1px solid var(--border);border-radius:18px;background:rgba(255,255,255,.82)}blockquote p{font-size:.86rem}blockquote footer{font-size:.75rem;font-weight:800}
+  @media (max-width:1100px){.story-grid{grid-template-columns:.7fr 1.3fr}.testimonials{grid-column:1/-1}}
+  @media (max-width:900px){.story-grid{grid-template-columns:.85fr 1.15fr}.testimonial-grid{grid-template-columns:1fr 1fr 1fr}}
+  @media (max-width:680px){.story-grid{grid-template-columns:1fr}.story-image{min-height:320px}.testimonial-grid{grid-template-columns:1fr}}
+</style>

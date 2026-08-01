@@ -1,0 +1,39 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Breadcrumbs from "../../components/Breadcrumbs.astro";
+import { formatPrice, getPrimaryImage, getProductsByCategory, getPublishedProducts, AVAILABILITY_LABELS } from "../../data/catalog";
+import { getProductWhatsappUrl } from "../../data/products";
+import { CATEGORY_LABELS, isCategorySlug } from "../../data/categories";
+
+const slug = Astro.params.slug ?? "";
+if (!isCategorySlug(slug)) return new Response("Categoría no encontrada", { status: 404 });
+
+const label = CATEGORY_LABELS[slug];
+const allProducts = await getPublishedProducts();
+const products = getProductsByCategory(allProducts, slug);
+---
+<BaseLayout
+  title={`${label} tejidos al crochet | Patilu`}
+  description={`Descubrí la categoría ${label} del catálogo de muñecos y objetos tejidos al crochet de Patilu.`}
+  activePath="/productos"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Muñecos", href: "/productos" }, { label }]} />
+  <section class="section products-section">
+    <div class="container">
+      <div class="section-heading"><div><p class="eyebrow">Categoría</p><h1>{label}</h1></div><a class="text-link" href="/productos">Ver todo el catálogo →</a></div>
+      {products.length > 0
+        ? <div class="product-grid">
+            {products.map((product) => { const primary = getPrimaryImage(product); return <article class="product-card"><div class="product-image">{primary ? <img src={primary.url} alt={primary.alt_text} loading="lazy" /> : <div class="catalog-placeholder">Foto próximamente</div>}</div><div class="product-body"><h2>{product.title}</h2><p class="price">{formatPrice(product)}</p><p class="stock">{AVAILABILITY_LABELS[product.availability]}</p><div class="product-actions"><a class="button button-outline" href={getProductWhatsappUrl({ name: product.title })} target="_blank" rel="noopener noreferrer">Consultar</a><a class="button button-soft" href={`/productos/${product.slug}/`}>Ver</a></div></div></article>})}
+          </div>
+        : <p class="empty-state">Todavía no hay productos publicados en {label}. Consultá el catálogo completo o volvé a pasar pronto.</p>}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .products-section{background:var(--surface)}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.product-card{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:#fff;box-shadow:0 8px 24px rgba(70,56,58,.055);transition:transform .2s ease,box-shadow .2s ease}.product-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-sm)}.product-image{position:relative;aspect-ratio:1/1.12;overflow:hidden;background:#f8eee6}.product-image img{height:100%;object-fit:contain}.product-body{padding:15px}.product-body h2{min-height:38px;font-size:1rem}.price{margin-bottom:6px;color:#d26073;font-size:.95rem;font-weight:800}.stock{margin-bottom:14px;color:#6b5d60;font-size:.78rem;font-weight:800}.product-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.product-actions .button{width:100%;min-height:40px;padding:9px 10px;border-radius:12px;font-size:.82rem}.catalog-placeholder{height:100%;display:grid;place-items:center;padding:20px;color:var(--muted);font-size:.8rem;text-align:center}
+  .empty-state{padding:40px 0;color:var(--muted)}
+  @media (max-width:1100px){.product-grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:680px){.product-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:420px){.product-grid{grid-template-columns:1fr}}
+</style>

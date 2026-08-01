@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+
+const faqs = [
+  ["¿Cuánto tarda en estar listo mi pedido?", "Los tiempos dependen de disponibilidad, tamaño y complejidad. Patilu los confirma en la consulta."],
+  ["¿Hacen envíos?", "Se puede consultar por opciones de envío y entrega antes de confirmar el pedido."],
+  ["¿Puedo pedir un muñeco personalizado?", "Sí. Podés contar tu idea y Patilu te indica si es posible realizarla y qué datos faltan."],
+];
+---
+<BaseLayout
+  title="Preguntas frecuentes | Patilu"
+  description="Resolvé las dudas más comunes antes de consultar por un muñeco tejido al crochet en Patilu."
+  activePath="/preguntas-frecuentes"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Preguntas frecuentes" }]} />
+  <section class="section faq-section">
+    <div class="container">
+      <div class="section-heading"><div><p class="eyebrow">Antes de pedir</p><h1>Preguntas frecuentes</h1></div></div>
+      <div class="faq">{faqs.map(([q, a]) => <details><summary>{q}</summary><p>{a}</p></details>)}</div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .faq-section{background:var(--surface)}.faq{max-width:760px}.faq details{border-bottom:1px solid var(--border);padding:16px 0}.faq summary{cursor:pointer;font-weight:800}.faq details p{margin:10px 0 0}
+</style>

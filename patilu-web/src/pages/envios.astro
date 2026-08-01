@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+---
+<BaseLayout
+  title="Envíos y entregas | Patilu"
+  description="Información sobre entregas y envíos de Patilu, muñecos tejidos al crochet hechos en Pinamar."
+  activePath="/envios"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Envíos" }]} />
+  <section class="section info-section">
+    <div class="container">
+      <div class="section-heading"><div><p class="eyebrow">Coordinación</p><h1>Entregas y envíos a consultar</h1></div></div>
+      <div class="shipping-grid">
+        <article><span aria-hidden="true">⌖</span><div><h2>Pinamar</h2><p>Coordinación a confirmar.</p></div></article>
+        <article><span aria-hidden="true">🚚</span><div><h2>Otras localidades</h2><p>Opciones a consultar.</p></div></article>
+        <article><span aria-hidden="true">📦</span><div><h2>Embalaje cuidado</h2><p>Preparación a confirmar.</p></div></article>
+      </div>
+      <p class="note">Los tiempos y costos de envío se confirman en la consulta según localidad, tamaño y disponibilidad del pedido.</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .info-section{background:var(--surface)}.shipping-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:28px 0}.shipping-grid article{display:flex;gap:12px;align-items:center;padding:18px;border:1px solid var(--border);border-radius:16px;background:#fff}.shipping-grid article>span{color:var(--primary);font-size:1.8rem}.shipping-grid h2{margin:0 0 3px;font-size:.95rem}.shipping-grid p{margin:0;font-size:.82rem}.note{color:var(--muted)}
+  @media (max-width:900px){.shipping-grid{grid-template-columns:1fr}}
+</style>
