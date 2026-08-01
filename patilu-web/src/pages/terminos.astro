@@ -1,0 +1,23 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+---
+<BaseLayout
+  title="Términos y condiciones | Patilu"
+  description="Términos y condiciones de Patilu."
+  activePath="/terminos"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Términos" }]} />
+  <section class="section legal-section">
+    <div class="container">
+      <p class="eyebrow">Legal</p>
+      <h1>Términos y condiciones</h1>
+      <p>Términos y condiciones próximamente. Patilu no tiene checkout online: cada compra se coordina y confirma por consulta antes de avanzar.</p>
+      <a class="text-link" href="/contacto">Ir a contacto →</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .legal-section{background:var(--surface)}.legal-section p{max-width:60ch}
+</style>

@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+import { whatsappNumber } from "../data/products";
+---
+<BaseLayout
+  title="Muñecos personalizados tejidos al crochet | Patilu"
+  description="Contá tu idea de muñeco personalizado tejido al crochet. Patilu revisa tamaño, colores, detalles y referencias antes de avanzar."
+  activePath="/personalizados"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Personalizados" }]} />
+  <section class="section custom-section">
+    <div class="container custom-grid">
+      <div class="custom-copy"><p class="eyebrow">Creado especialmente para vos</p><h1>¿Tenés un personaje en mente? <span aria-hidden="true">♡</span></h1><p>También se pueden consultar muñecos personalizados. Contá tu idea y Patilu revisa tamaño, colores, detalles y referencias posibles antes de avanzar.</p></div>
+      <div class="custom-process" aria-label="Proceso de diseño personalizado">
+        <div class="idea-card"><span class="step-label">1. Tu idea</span><div class="sketch" aria-hidden="true"><span>♡</span><div class="sketch-head"></div><div class="sketch-body"></div></div></div><span class="process-arrow" aria-hidden="true">→</span>
+        <div class="idea-card"><span class="step-label">2. Nos inspiramos</span><img src="/assets/muneco-stranger-1.webp" alt="Ejemplo de muñeco personalizado tejido al crochet" loading="lazy" /></div><span class="process-arrow" aria-hidden="true">→</span>
+        <form class="mini-form" id="custom-form" data-whatsapp-number={whatsappNumber} novalidate><strong>3. Contanos tu idea</strong><label><span>Nombre</span><input type="text" name="name" autocomplete="name" required placeholder="Tu nombre" /></label><label><span>Idea</span><textarea name="idea" rows="3" required minlength="12" placeholder="Personaje, colores, tamaño..."></textarea></label><button class="button button-primary" type="submit">Enviar idea por WhatsApp</button><p class="form-status" role="status" aria-live="polite">Completá el formulario y te llevamos a WhatsApp con tu idea ya cargada.</p></form>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.querySelector("#custom-form")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const status = form.querySelector(".form-status");
+      if (!form.checkValidity()) { form.reportValidity(); status.textContent = "Revisá los campos marcados: necesitamos tu nombre y una idea con al menos 12 caracteres."; return; }
+      const data = new FormData(form);
+      const name = String(data.get("name")).trim();
+      const idea = String(data.get("idea")).trim();
+      const whatsappNumber = form.dataset.whatsappNumber;
+      const message = `Hola Patilu, soy ${name} y quiero consultar por un muñeco personalizado. Mi idea: ${idea}`;
+      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+      status.textContent = `Gracias, ${name}. Te abrimos WhatsApp con tu idea cargada para que confirmes la consulta.`;
+      form.reset();
+    });
+  </script>
+</BaseLayout>
+
+<style>
+  .custom-section{background:radial-gradient(circle at 10% 20%,rgba(255,255,255,.55),transparent 25%),linear-gradient(135deg,#f6edf8 0%,#eee3f4 100%)}.custom-grid{display:grid;grid-template-columns:.7fr 1.3fr;gap:54px;align-items:center}.custom-copy p:not(.eyebrow){max-width:500px}.custom-process{display:grid;grid-template-columns:1fr auto 1fr auto 1.35fr;gap:10px;align-items:center}.idea-card,.mini-form{min-height:260px;padding:16px;border:1px solid rgba(163,132,186,.22);border-radius:20px;background:rgba(255,255,255,.72);box-shadow:var(--shadow-sm)}.step-label{display:block;margin-bottom:12px;font-size:.8rem;font-weight:800;text-align:center}.idea-card img{height:200px;border-radius:14px;object-fit:cover}.sketch{position:relative;height:190px;border-radius:14px;background:linear-gradient(#fff 23px,#eddfea 24px) 0 0/100% 24px,#fff}.sketch>span{position:absolute;top:22px;right:24px;color:var(--primary);font-size:2rem}.sketch-head{position:absolute;top:44px;left:50%;width:54px;height:54px;transform:translateX(-50%);border:3px solid #b49cb9;border-radius:50%}.sketch-body{position:absolute;top:99px;left:50%;width:84px;height:72px;transform:translateX(-50%);border:3px solid #b49cb9;clip-path:polygon(50% 0,100% 100%,0 100%)}.process-arrow{color:#987d99;font-size:1.3rem}.mini-form{display:flex;flex-direction:column;gap:10px}.mini-form label span{display:block;margin-bottom:4px;font-size:.72rem;font-weight:800}.mini-form input,.mini-form textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.82);color:var(--text);resize:vertical}.form-status{margin:0;font-size:.8rem}
+  @media (max-width:1100px){.custom-process{grid-template-columns:1fr 1fr 1.2fr}.process-arrow{display:none}}
+  @media (max-width:900px){.custom-grid{grid-template-columns:1fr}}
+  @media (max-width:680px){.custom-process{grid-template-columns:1fr}.idea-card,.mini-form{min-height:auto}.idea-card img{height:260px}}
+</style>

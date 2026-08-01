@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+import { whatsappNumber } from "../data/products";
+
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hola Patilu, quiero hacer una consulta.")}`;
+---
+<BaseLayout
+  title="Contacto | Patilu"
+  description="Consultá a Patilu por WhatsApp sobre el catálogo o un pedido personalizado tejido al crochet."
+  activePath="/contacto"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contacto" }]} />
+  <section class="section contact-section">
+    <div class="container contact-grid">
+      <div>
+        <p class="eyebrow">Hablemos</p>
+        <h1>Contacto</h1>
+        <p>La vía principal de consulta es WhatsApp: ahí Patilu confirma disponibilidad, precio y coordinación de cada pedido.</p>
+        <a class="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><span aria-hidden="true">◉</span> Consultar por WhatsApp</a>
+      </div>
+      <div class="contact-card">
+        <h2>Antes de escribir</h2>
+        <p>Patilu atiende consultas por WhatsApp, sin otro canal de contacto por ahora. Contá qué producto te interesa o tu idea personalizada y coordina precio, disponibilidad y envío directamente ahí.</p>
+        <a class="text-link" href="/personalizados">Preparar consulta personalizada →</a>
+        <a class="text-link" href="/productos">Consultar catálogo →</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .contact-section{background:var(--surface)}.contact-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:start}.contact-grid p{max-width:52ch}.contact-card{padding:24px;border:1px solid var(--border);border-radius:20px;background:#fff;display:flex;flex-direction:column;gap:10px}.contact-card a{width:max-content}
+  @media (max-width:900px){.contact-grid{grid-template-columns:1fr}}
+</style>

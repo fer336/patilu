@@ -1,0 +1,28 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+
+const steps = [
+  ["1", "Elegí tu muñeco", "Explorá el catálogo y marcá el diseño que te interesa, o contá tu idea si buscás algo personalizado."],
+  ["2", "Contanos tu consulta", "Pedí precio, disponibilidad, colores o variantes por WhatsApp o dejando tus datos."],
+  ["3", "Coordinamos los datos", "Patilu confirma posibilidades, precio, tiempos y forma de entrega o envío antes de avanzar."],
+];
+---
+<BaseLayout
+  title="Cómo comprar en Patilu | Muñecos tejidos al crochet"
+  description="Así funciona la consulta de compra en Patilu: sin checkout online, coordinando cada pedido antes de confirmar."
+  activePath="/como-comprar"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Cómo comprar" }]} />
+  <section class="section buying-section">
+    <div class="container">
+      <div class="section-heading"><div><p class="eyebrow">Simple y directo</p><h1>¿Cómo consultar?</h1></div></div>
+      <div class="steps-grid">{steps.map(([n, h, p], i) => <article class="step-card"><div class={`step-icon ${["step-pink", "step-purple", "step-green"][i]}`}>{n}</div><div><h2>{h}</h2><p>{p}</p></div></article>)}</div>
+      <p class="note">Patilu no tiene checkout online ni pago automático en esta etapa: cada compra se coordina por consulta, ya sea desde el catálogo o desde un pedido personalizado.</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .buying-section{background:var(--surface)}.steps-grid{display:grid;gap:22px;margin-bottom:24px}.step-card{display:grid;grid-template-columns:54px 1fr;gap:16px;align-items:center;padding:18px;border:1px solid var(--border);border-radius:18px;background:#fff}.step-icon{width:54px;height:54px;display:grid;place-items:center;border-radius:50%;font-weight:900}.step-pink{border:2px solid #eba7b2;color:#da7182;background:#fff4f5}.step-purple{border:2px solid #bba8d1;color:#8c70ab;background:#f7f1fb}.step-green{border:2px solid #aac99f;color:#668c5d;background:#f5faf2}.note{color:var(--muted)}
+</style>

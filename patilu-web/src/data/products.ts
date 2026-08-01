@@ -1,3 +1,5 @@
+import type { CategorySlug } from "./categories";
+
 export type Product = {
   slug: string;
   badge: string;
@@ -7,7 +9,8 @@ export type Product = {
   name: string;
   alt: string;
   description: string;
-  category: string;
+  category: CategorySlug;
+  trend: boolean;
   measure: string;
   price: string | null;
   currency: string;
@@ -26,7 +29,8 @@ export const products: Product[] = [
     name: "Muñeca tejida",
     alt: "Muñeca tejida al crochet",
     description: "Muñeca artesanal tejida al crochet, ideal para consultar como regalo o recuerdo personalizado.",
-    category: "Muñecos",
+    category: "munecos",
+    trend: false,
     measure: "Medida a confirmar", price: null, currency: "ARS", availability: "made_to_order",
   },
   {
@@ -38,7 +42,8 @@ export const products: Product[] = [
     name: "Oveja crochet",
     alt: "Oveja tejida al crochet",
     description: "Oveja tejida al crochet con terminación suave y detalles artesanales a consultar.",
-    category: "Amigurumis",
+    category: "munecos",
+    trend: true,
     measure: "Medida a confirmar", price: null, currency: "ARS", availability: "made_to_order",
   },
   {
@@ -50,7 +55,8 @@ export const products: Product[] = [
     name: "Taza tejida",
     alt: "Taza tejida al crochet",
     description: "Pieza tejida al crochet para regalar o decorar, con precio y disponibilidad a confirmar.",
-    category: "Decoración",
+    category: "hogar",
+    trend: true,
     measure: "Medida a confirmar", price: null, currency: "ARS", availability: "made_to_order",
   },
   {
@@ -62,7 +68,8 @@ export const products: Product[] = [
     name: "Muñeco personalizado",
     alt: "Muñeco personalizado tejido al crochet",
     description: "Diseño personalizado tejido al crochet, sujeto a revisión de idea, colores, tamaño y detalles.",
-    category: "Personalizados",
+    category: "munecos",
+    trend: false,
     measure: "A definir según el diseño", price: null, currency: "ARS", availability: "made_to_order",
   },
   {
@@ -74,7 +81,8 @@ export const products: Product[] = [
     name: "Muñeco especial",
     alt: "Muñeco especial tejido al crochet",
     description: "Muñeco tejido con detalles especiales. Consultá posibilidades antes de avanzar.",
-    category: "Personalizados",
+    category: "munecos",
+    trend: true,
     measure: "A definir según el diseño", price: null, currency: "ARS", availability: "made_to_order",
   },
   {
@@ -86,7 +94,8 @@ export const products: Product[] = [
     name: "Muñeca artesanal",
     alt: "Muñeca artesanal tejida al crochet",
     description: "Muñeca artesanal con detalles tejidos, pensada para regalos únicos y consultas personalizadas.",
-    category: "Muñecos",
+    category: "munecos",
+    trend: false,
     measure: "Medida a confirmar", price: null, currency: "ARS", availability: "made_to_order",
   },
 ];
