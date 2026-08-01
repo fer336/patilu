@@ -1,27 +1,6 @@
 version: "3.8"
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: patilu
-      POSTGRES_USER: patilu
-      POSTGRES_PASSWORD_FILE: /run/secrets/patilu_postgres_password
-    secrets:
-      - patilu_postgres_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - network_internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U patilu -d patilu"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    deploy:
-      restart_policy:
-        condition: on-failure
-
   minio:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z
     command: server /data --console-address ":9001"
@@ -152,12 +131,9 @@ networks:
     attachable: false
 
 volumes:
-  postgres_data:
   minio_data:
 
 secrets:
-  patilu_postgres_password:
-    external: true
   patilu_minio_root_user:
     external: true
   patilu_minio_root_password:

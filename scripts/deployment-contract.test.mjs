@@ -91,9 +91,8 @@ const webService = stack.slice(stack.indexOf("  patilu-web:"), stack.indexOf("  
 for (const service of ["patilu-web", "patilu-cms", "patilu-api"]) {
   assertIncludes("docker-stack.yml", stack, new RegExp(`${service}:`));
 }
-for (const service of ["postgres", "minio"]) {
-  assertIncludes("docker-stack.yml", stack, new RegExp(`${service}:`));
-}
+assertIncludes("docker-stack.yml", stack, /minio:/);
+assertNotIncludes("docker-stack.yml", stack, /^ {2}postgres:/m);
 const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/(patilu-(?:web|cms|api)):(\S+)/g)];
 assert.equal(stackImages.length, 3, "docker-stack.yml must contain exactly three Patilu images");
 assert.deepEqual(new Set(stackImages.map((match) => match[1])), new Set(["patilu-web", "patilu-cms", "patilu-api"]));
@@ -103,9 +102,9 @@ assertNotIncludes("docker-stack.yml", stack, /ghcr\.io\/fer336\/patilu-(?:web|cm
 assertIncludes("docker-stack.yml", stack, /external: true/);
 assertIncludes("docker-stack.yml", stack, /network_public/);
 assertIncludes("docker-stack.yml", stack, /network_internal/);
-assertIncludes("docker-stack.yml", stack, /postgres_data/);
 assertIncludes("docker-stack.yml", stack, /minio_data/);
-assertIncludes("docker-stack.yml", stack, /POSTGRES_PASSWORD_FILE: \/run\/secrets\/patilu_postgres_password/);
+assertNotIncludes("docker-stack.yml", stack, /postgres_data/);
+assertNotIncludes("docker-stack.yml", stack, /patilu_postgres_password/);
 assertIncludes("docker-stack.yml", stack, /MINIO_ROOT_USER_FILE: \/run\/secrets\/patilu_minio_root_user/);
 assertIncludes("docker-stack.yml", stack, /MINIO_ROOT_PASSWORD_FILE: \/run\/secrets\/patilu_minio_root_password/);
 assertIncludes("docker-stack.yml", stack, /patilu_backend_env/);
