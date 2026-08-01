@@ -39,9 +39,22 @@ Production deployment is image-only for Docker Swarm. Production images are buil
 
 ### Catalog environment
 
-The stack requires `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, and `MINIO_ROOT_PASSWORD` in Portainer's stack environment. Passwords are placeholders by design and MUST NOT be committed. If the PostgreSQL password contains URL-reserved characters, provide its percent-encoded form because it is interpolated into `DATABASE_URL`.
+All secret configuration lives in external Docker Swarm secrets; the stack declares no compose variable interpolation and Portainer needs no stack environment variables. PostgreSQL is an externally managed database, not a stack service; only the following three secrets MUST exist in the Swarm before the stack is deployed:
 
-The API runs `alembic upgrade head` before starting. PostgreSQL and MinIO data live in the named volumes `postgres_data` and `minio_data`; both require an operator backup policy. MinIO's S3 API is exposed only at `media-patilu.qeva.xyz` for public read access to product objects, while its administration console remains internal.
+| Secret | Contents |
+|---|---|
+| `patilu_minio_root_user` | MinIO root user; consumed via `MINIO_ROOT_USER_FILE`. |
+| `patilu_minio_root_password` | MinIO root password; consumed via `MINIO_ROOT_PASSWORD_FILE`. |
+| `patilu_backend_env` | Complete dotenv document for the API, mounted at `/run/secrets/backend.env` with mode `0444`. Must define `DATABASE_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, and `API_ADMIN_TOKEN`. |
+
+Create them on a Swarm manager with `docker secret create <name> <file>` (for example, `printf '%s' 'value' | docker secret create patilu_minio_root_user -`) or through Portainer's Secrets view. The stack references them as `external: true`, so the names must match exactly.
+
+> [!WARNING]
+> The `minio_data` volume is already initialized in production, and the external PostgreSQL database already holds production data. The secret VALUES MUST MATCH the current production credentials — including the credentials embedded in `DATABASE_URL`, `MINIO_ACCESS_KEY`, and `MINIO_SECRET_KEY` inside `patilu_backend_env` — or PostgreSQL authentication and MinIO/storage access break.
+
+Passwords are placeholders by design and MUST NOT be committed. If the PostgreSQL password contains URL-reserved characters, use its percent-encoded form inside the `DATABASE_URL` value of `patilu_backend_env`.
+
+The API runs `alembic upgrade head` before starting against the external PostgreSQL database, which requires its own operator backup policy outside this stack. MinIO data lives in the named volume `minio_data` and also requires an operator backup policy. MinIO's S3 API is exposed only at `media-patilu.qeva.xyz` for public read access to product objects, while its administration console remains internal.
 
 Astro runs with the Node standalone adapter and reads `API_INTERNAL_URL` at runtime, so new published slugs appear without a Git rebuild. Local development falls back to the bundled sample catalog when localhost API access fails; production does not hide API failures behind stale data. `ALLOW_CATALOG_FALLBACK=true` enables that behavior explicitly outside localhost. The CMS reads `VITE_API_BASE_URL` at build time; its production Docker default is `https://patilu.qeva.xyz/api`.
 
@@ -55,8 +68,9 @@ Operator checklist:
 
 1. Keep the external Swarm network named `network_public` available for Traefik and create DNS for `media-patilu.qeva.xyz`.
 2. Configure the GitHub secret `PORTAINER_WEBHOOK` and grant GitHub Actions permission to write repository contents and GHCR packages.
-3. Deploy `docker-stack.yml` from Portainer so Traefik routes `patilu.qeva.xyz`, `cms-patilu.qeva.xyz`, and `/api` on the public host.
-4. Protect `main` while allowing the release workflow's normal bot push of the stack-only version commit.
+3. Create the four external Swarm secrets listed in [Catalog environment](#catalog-environment) with values matching the current production credentials; the stack deploy fails until they exist.
+4. Deploy `docker-stack.yml` from Portainer so Traefik routes `patilu.qeva.xyz`, `cms-patilu.qeva.xyz`, and `/api` on the public host.
+5. Protect `main` while allowing the release workflow's normal bot push of the stack-only version commit.
 
 Release process:
 
