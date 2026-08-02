@@ -3,6 +3,7 @@ name: Deploy Patilu
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   release:
     types: [published]
@@ -216,19 +217,82 @@ jobs:
           ref: ${{ needs.update-stack.outputs.stack_sha }}
           fetch-depth: 0
 
-      - name: Invoke Portainer webhook
-        env:
-          PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK }}
-        run: |
-          git fetch --no-tags origin main
-          test "$(git rev-parse origin/main)" = "${{ needs.update-stack.outputs.stack_sha }}"
-          test -n "${PORTAINER_WEBHOOK:-}"
-          curl --fail --silent --show-error \
-            --connect-timeout 10 \
-            --max-time 30 \
-            --retry 2 \
-            --retry-delay 2 \
-            --retry-max-time 60 \
-            --retry-all-errors \
-            --request POST \
-            --url "$PORTAINER_WEBHOOK"
+       - name: Invoke Portainer webhook
+         env:
+           PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK }}
+         run: |
+           git fetch --no-tags origin main
+           test "$(git rev-parse origin/main)" = "${{ needs.update-stack.outputs.stack_sha }}"
+           test -n "${PORTAINER_WEBHOOK:-}"
+           curl --fail --silent --show-error \
+             --connect-timeout 10 \
+             --max-time 30 \
+             --retry 2 \
+             --retry-delay 2 \
+             --retry-max-time 60 \
+             --retry-all-errors \
+             --request POST \
+             --url "$PORTAINER_WEBHOOK"
+
+   tag-deploy:
+     name: Deploy from tag push
+     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+     runs-on: ubuntu-latest
+     permissions:
+       contents: read
+       packages: write
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v5
+         with:
+           fetch-depth: 0
+
+       - name: Log in to GHCR
+         uses: docker/login-action@v3
+         with:
+           registry: ${{ env.REGISTRY }}
+           username: ${{ github.actor }}
+           password: ${{ secrets.GITHUB_TOKEN }}
+
+       - name: Set up Docker Buildx
+         uses: docker/setup-buildx-action@v3
+
+       - name: Build and push web image
+         uses: docker/build-push-action@v6
+         with:
+           context: patilu
+           file: patilu/Dockerfile
+           platforms: linux/amd64
+           push: true
+           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-web:${{ github.ref_name }}
+
+       - name: Update stack version
+         run: node scripts/set-stack-version.mjs "${{ github.ref_name }}"
+
+       - name: Commit and push stack version
+         run: |
+           if git diff --quiet -- docker-stack.yml; then
+             echo "docker-stack.yml is already at ${{ github.ref_name }}."
+           else
+             git config user.name "github-actions[bot]"
+             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+             git add docker-stack.yml
+             git commit -m "chore(deploy): pin stack to ${{ github.ref_name }}"
+             git push origin main
+           fi
+
+       - name: Invoke Portainer webhook
+         env:
+           PORTAINER_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK }}
+         run: |
+           git fetch --no-tags origin main
+           test -n "${PORTAINER_WEBHOOK:-}"
+           curl --fail --silent --show-error \
+             --connect-timeout 10 \
+             --max-time 30 \
+             --retry 2 \
+             --retry-delay 2 \
+             --retry-max-time 60 \
+             --retry-all-errors \
+             --request POST \
+             --url "$PORTAINER_WEBHOOK"
