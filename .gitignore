@@ -14,3 +14,5 @@ __pycache__/
 !.env.example
 patilu-brief-web-astro-seo-geo (1).md
 patilu-especificacion-reestructurada.md
+.impeccable/
+excalidraw.log
