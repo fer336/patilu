@@ -208,7 +208,7 @@ assertNotIncludes("deploy job", deploy, /needs: \[build-web, build-cms, build-ap
   const tagDeploy = jobSection(workflow, "tag-deploy", "");
 assertIncludes("tag-deploy job", tagDeploy, /if: github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\)/);
 assertIncludes("tag-deploy job", tagDeploy, /docker\/build-push-action@v6/);
-assertIncludes("tag-deploy job", tagDeploy, /context: patilu-web/);
+assertIncludes("tag-deploy job", tagDeploy, /context: \./);
 assertIncludes("tag-deploy job", tagDeploy, /file: patilu-web\/Dockerfile/);
 assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
 assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);

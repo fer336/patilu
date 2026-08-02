@@ -339,7 +339,7 @@ jobs:
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:
-          context: patilu-web
+          context: .
           file: patilu-web/Dockerfile
           platforms: linux/amd64
           push: true
