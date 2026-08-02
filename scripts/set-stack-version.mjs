@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const STABLE_SEMVER = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const IMAGE_PREFIX = "ghcr.io/fer336/";
 const EXPECTED_IMAGES = ["patilu"];
-const PATILU_IMAGE = /ghcr\.io\/fer336\/(patilu-[a-z0-9-]+):([^\s"']+)/g;
+const PATILU_IMAGE = /ghcr\.io\/fer336\/(patilu):([^\s"']+)/g;
 const BOT_NAME = "github-actions[bot]";
 const BOT_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com";
 

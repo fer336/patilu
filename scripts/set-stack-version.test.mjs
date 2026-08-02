@@ -23,8 +23,8 @@ assert.match(updated, /environment: unchanged/);
 assert.equal(setStackVersion(updated, "v1.2.3"), updated);
 assert.equal(setStackVersion(updated, "v2.0.0").match(/:v2\.0\.0/g)?.length, 1);
 
-const mixed = stack.replace("patilu:production", "patilu:v1.0.0");
-assert.throws(() => setStackVersion(mixed, "v1.0.1"), /must be coherent/);
+const stableCurrent = stack.replace("patilu:production", "patilu:v1.0.0");
+assert.equal(setStackVersion(stableCurrent, "v1.0.1").match(/:v1\.0\.1/g)?.length, 1);
 
 const mutable = stack.replaceAll(":production", ":latest");
 assert.throws(() => setStackVersion(mutable, "v1.0.0"), /bootstrap production or stable SemVer/);
