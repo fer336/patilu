@@ -35,7 +35,3 @@ services:
 networks:
   network_public:
     external: true
-
-secrets:
-  patilu_backend_env:
-    external: true
