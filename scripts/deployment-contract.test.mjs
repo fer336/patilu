@@ -47,12 +47,13 @@ assertNotIncludes(".dockerignore", dockerignore, /package-lock\.json/);
 const dockerfile = read("patilu/Dockerfile");
 assertIncludes("patilu/Dockerfile", dockerfile, /FROM node:.* AS build/);
 assertIncludes("patilu/Dockerfile", dockerfile, /npm ci/);
-assertIncludes("patilu/Dockerfile", dockerfile, /npm run build/);
+assertIncludes("patilu/Dockerfile", dockerfile, /npm --workspace patilu run build/);
 assertIncludes("patilu/Dockerfile", dockerfile, /FROM node:.* AS runtime/);
 assertIncludes("patilu/Dockerfile", dockerfile, /EXPOSE 8080/);
 assertIncludes("patilu/Dockerfile", dockerfile, /USER node/);
 assertIncludes("patilu/Dockerfile", dockerfile, /node:net/);
 assertIncludes("patilu/Dockerfile", dockerfile, /port:8080/);
+assertIncludes("patilu/Dockerfile", dockerfile, /\/workspace\/patilu\/dist/);
 assertNotIncludes("patilu/Dockerfile", dockerfile, /127\.0\.0\.1:8080\//);
 assertNotIncludes("patilu/Dockerfile", dockerfile, /fetch\(|\/healthz/);
 
@@ -120,8 +121,7 @@ assertIncludes("release-validation job", validation, /git diff-tree --no-commit-
 const promote = jobSection(workflow, "promote", "update-stack");
 assertIncludes("promote job", promote, /needs: \[release-validation, build\]/);
 assertIncludes("promote job", promote, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
-assertIncludes("promote job", promote, /\/patilu:sha-\$\{\{ github\.sha \}\}/);
-assertIncludes("promote job", promote, /source=.*:sha-\$\{\{ github\.sha \}\}/);
+assertIncludes("promote job", promote, /source="\$\{REGISTRY\}\/\$\{IMAGE_OWNER\}\/patilu:sha-\$\{\{ github\.sha \}\}"/);
 assertIncludes("promote job", promote, /docker buildx imagetools inspect "\$source"/);
 assertIncludes("promote job", promote, /github\.event\.release\.tag_name/);
 assertNotIncludes("promote job", promote, /:(?:latest|production)/);
