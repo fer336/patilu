@@ -185,7 +185,7 @@ assertIncludes("update-stack job", updateStack, /stack_sha=.*git rev-parse HEAD/
 assertNotIncludes("update-stack job", updateStack, /--force/);
 assertNotIncludes("update-stack job", updateStack, /exit 0/);
 
-assert.equal((workflow.match(/contents: write/g) ?? []).length, 1, "only update-stack may write contents");
+assert.equal((workflow.match(/contents: write/g) ?? []).length, 2, "only update-stack and tag-deploy may write contents");
 for (const mutationJob of [promotion, updateStack, jobSection(workflow, "deploy")]) {
   assertIncludes("mutation job", mutationJob, /if: github\.event_name == 'release'/);
 }
@@ -210,17 +210,18 @@ assertNotIncludes("deploy job", deploy, /needs: \[build-web, build-cms, build-ap
   }
 
   const tagDeploy = jobSection(workflow, "tag-deploy", "");
-  assertIncludes("tag-deploy job", tagDeploy, /if: github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\)/);
-  assertIncludes("tag-deploy job", tagDeploy, /docker\/build-push-action@v6/);
-  assertIncludes("tag-deploy job", tagDeploy, /context: patilu/);
-  assertIncludes("tag-deploy job", tagDeploy, /file: patilu\/Dockerfile/);
-  assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
-  assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);
-  assertIncludes("tag-deploy job", tagDeploy, /node scripts\/set-stack-version\.mjs/);
-  assertIncludes("tag-deploy job", tagDeploy, /git add docker-stack\.yml/);
-  assertIncludes("tag-deploy job", tagDeploy, /git push origin main/);
-  assertIncludes("tag-deploy job", tagDeploy, /PORTAINER_WEBHOOK: \$\{\{ secrets\.PORTAINER_WEBHOOK \}\}/);
-  assertIncludes("tag-deploy job", tagDeploy, /--url "\$PORTAINER_WEBHOOK"/);
+assertIncludes("tag-deploy job", tagDeploy, /if: github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\)/);
+assertIncludes("tag-deploy job", tagDeploy, /docker\/build-push-action@v6/);
+assertIncludes("tag-deploy job", tagDeploy, /context: patilu-web/);
+assertIncludes("tag-deploy job", tagDeploy, /file: patilu-web\/Dockerfile/);
+assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
+assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);
+assertIncludes("tag-deploy job", tagDeploy, /node scripts\/set-stack-version\.mjs/);
+assertIncludes("tag-deploy job", tagDeploy, /git add docker-stack\.yml/);
+assertIncludes("tag-deploy job", tagDeploy, /git push origin main/);
+assertIncludes("tag-deploy job", tagDeploy, /PORTAINER_WEBHOOK: \$\{\{ secrets\.PORTAINER_WEBHOOK \}\}/);
+assertIncludes("tag-deploy job", tagDeploy, /--url "\$PORTAINER_WEBHOOK"/);
+assertIncludes("tag-deploy job", tagDeploy, /contents: write/);
 
   const readme = read("README.md");
 const outOfScope = readme.slice(readme.indexOf("## Out of scope"), readme.indexOf("## Required external inputs"));

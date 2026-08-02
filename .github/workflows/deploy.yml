@@ -318,7 +318,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - name: Checkout
@@ -339,8 +339,8 @@ jobs:
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:
-          context: patilu
-          file: patilu/Dockerfile
+          context: patilu-web
+          file: patilu-web/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu-web:${{ github.ref_name }}
