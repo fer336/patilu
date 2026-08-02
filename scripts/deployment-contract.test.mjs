@@ -103,7 +103,7 @@ assertIncludes(".github/workflows/deploy.yml", workflow, /test -n "\$\{PORTAINER
 assertIncludes(".github/workflows/deploy.yml", workflow, /--url "\$PORTAINER_WEBHOOK"/);
 assertNotIncludes(".github/workflows/deploy.yml", workflow, /PORTAINER_WEBHOOK_URL/);
 
-const buildJob = jobSection(workflow, "build", "release-validation");
+const buildJob = jobSection(workflow, "build", "promote");
 assertIncludes("build job", buildJob, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
 assertIncludes("build job", buildJob, /:sha-\$\{\{ github\.sha \}\}/);
 assertNotIncludes("build job", buildJob, /:production/);
@@ -120,7 +120,7 @@ assertIncludes("release-validation job", validation, /git diff-tree --no-commit-
 const promote = jobSection(workflow, "promote", "update-stack");
 assertIncludes("promote job", promote, /needs: \[release-validation, build\]/);
 assertIncludes("promote job", promote, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
-assertIncludes("promote job", promote, /images=\(patilu\)/);
+assertIncludes("promote job", promote, /\/patilu:sha-\$\{\{ github\.sha \}\}/);
 assertIncludes("promote job", promote, /source=.*:sha-\$\{\{ github\.sha \}\}/);
 assertIncludes("promote job", promote, /docker buildx imagetools inspect "\$source"/);
 assertIncludes("promote job", promote, /github\.event\.release\.tag_name/);
