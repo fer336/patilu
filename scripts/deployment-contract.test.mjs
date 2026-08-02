@@ -130,10 +130,10 @@ assertNotIncludes("docker-stack.yml", stack, /build:/);
 
 const workflow = read(".github/workflows/deploy.yml");
 assertIncludes(".github/workflows/deploy.yml", workflow, /on:/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /branches: \[main\]/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /pull_request:/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /release:\n    types: \[published\]/);
-assertNotIncludes(".github/workflows/deploy.yml", workflow, /workflow_dispatch:/);
+  assertIncludes(".github/workflows/deploy.yml", workflow, /branches: \[main\]/);
+  assertIncludes(".github/workflows/deploy.yml", workflow, /tags: \["v\*"\]/);
+  assertIncludes(".github/workflows/deploy.yml", workflow, /release:\n    types: \[published\]/);
+  assertNotIncludes(".github/workflows/deploy.yml", workflow, /workflow_dispatch:/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /contents: read/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu-web test/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/deployment-contract\.test\.mjs/);
@@ -198,18 +198,31 @@ assertIncludes("deploy job", deploy, /permissions:\n      contents: read/);
 assertIncludes("deploy job", deploy, /ref: \$\{\{ needs\.update-stack\.outputs\.stack_sha \}\}/);
 assertIncludes("deploy job", deploy, /git rev-parse origin\/main.*needs\.update-stack\.outputs\.stack_sha/);
 assertNotIncludes("deploy job", deploy, /needs: \[build-web, build-cms, build-api\]/);
-for (const option of [
-  /--connect-timeout 10/,
-  /--max-time 30/,
-  /--retry 2/,
-  /--retry-delay 2/,
-  /--retry-max-time 60/,
-  /--retry-all-errors/,
-]) {
-  assertIncludes("deploy job", deploy, option);
-}
+  for (const option of [
+    /--connect-timeout 10/,
+    /--max-time 30/,
+    /--retry 2/,
+    /--retry-delay 2/,
+    /--retry-max-time 60/,
+    /--retry-all-errors/,
+  ]) {
+    assertIncludes("deploy job", deploy, option);
+  }
 
-const readme = read("README.md");
+  const tagDeploy = jobSection(workflow, "tag-deploy", "");
+  assertIncludes("tag-deploy job", tagDeploy, /if: github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\)/);
+  assertIncludes("tag-deploy job", tagDeploy, /docker\/build-push-action@v6/);
+  assertIncludes("tag-deploy job", tagDeploy, /context: patilu/);
+  assertIncludes("tag-deploy job", tagDeploy, /file: patilu\/Dockerfile/);
+  assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
+  assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);
+  assertIncludes("tag-deploy job", tagDeploy, /node scripts\/set-stack-version\.mjs/);
+  assertIncludes("tag-deploy job", tagDeploy, /git add docker-stack\.yml/);
+  assertIncludes("tag-deploy job", tagDeploy, /git push origin main/);
+  assertIncludes("tag-deploy job", tagDeploy, /PORTAINER_WEBHOOK: \$\{\{ secrets\.PORTAINER_WEBHOOK \}\}/);
+  assertIncludes("tag-deploy job", tagDeploy, /--url "\$PORTAINER_WEBHOOK"/);
+
+  const readme = read("README.md");
 const outOfScope = readme.slice(readme.indexOf("## Out of scope"), readme.indexOf("## Required external inputs"));
 assertNotIncludes("README out-of-scope section", outOfScope, /\bdeployment\b/i);
 assertIncludes("README.md", readme, /## Deployment foundation/);
