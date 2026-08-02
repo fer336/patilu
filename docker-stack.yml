@@ -1,36 +1,6 @@
 version: "3.8"
 
 services:
-  minio:
-    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER_FILE: /run/secrets/patilu_minio_root_user
-      MINIO_ROOT_PASSWORD_FILE: /run/secrets/patilu_minio_root_password
-    secrets:
-      - patilu_minio_root_user
-      - patilu_minio_root_password
-    volumes:
-      - minio_data:/data
-    networks:
-      - network_internal
-      - network_public
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    deploy:
-      restart_policy:
-        condition: on-failure
-      labels:
-        - traefik.enable=true
-        - traefik.docker.network=network_public
-        - traefik.http.routers.patilu-media.rule=Host(`media-patilu.qeva.xyz`)
-        - traefik.http.routers.patilu-media.entrypoints=websecure
-        - traefik.http.routers.patilu-media.tls.certresolver=letsencryptresolver
-        - traefik.http.services.patilu-media.loadbalancer.server.port=9000
-
   patilu-web:
     image: ghcr.io/fer336/patilu-web:v0.1.1
     environment:
@@ -91,9 +61,6 @@ services:
     image: ghcr.io/fer336/patilu-api:v0.1.1
     environment:
       CORS_ORIGINS: '["https://cms-patilu.qeva.xyz","http://localhost:5173"]'
-      MINIO_ENDPOINT: minio:9000
-      MINIO_BUCKET: product-images
-      MINIO_SECURE: "false"
       MEDIA_PUBLIC_URL: https://media-patilu.qeva.xyz/product-images
     secrets:
       - source: patilu_backend_env
@@ -131,12 +98,7 @@ networks:
     attachable: false
 
 volumes:
-  minio_data:
 
 secrets:
-  patilu_minio_root_user:
-    external: true
-  patilu_minio_root_password:
-    external: true
   patilu_backend_env:
     external: true
