@@ -58,6 +58,7 @@ const recovery = {
   mainStack: updated,
 };
 assert.equal(validateReleaseLineage(recovery), "recovery");
+assert.equal(validateReleaseLineage({ ...recovery, subject: "chore(deploy): pin stack to v1.2.3 (#40)" }), "recovery");
 assert.throws(() => validateReleaseLineage({ ...recovery, eventSha: childSha }), /event SHA/);
 assert.throws(() => validateReleaseLineage({ ...recovery, subject: "fix: unrelated" }), /expected stack-pin/);
 assert.throws(() => validateReleaseLineage({ ...recovery, authorName: "Not Actions" }), /identity/);

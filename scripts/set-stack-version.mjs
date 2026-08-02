@@ -42,7 +42,8 @@ export function validateReleaseLineage(input) {
 
   const expectedSubject = `chore(deploy): pin stack to ${input.tag}`;
   if (input.parentShas !== input.releaseSha) throw new Error("Main is not the release commit's direct child.");
-  if (input.subject !== expectedSubject) throw new Error("Main child is not the expected stack-pin commit.");
+  const expectedSubjectPattern = new RegExp(`^${expectedSubject.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?: \\(#\\d+\\))?$`);
+  if (!expectedSubjectPattern.test(input.subject)) throw new Error("Main child is not the expected stack-pin commit.");
   if (input.authorName !== BOT_NAME || input.committerName !== BOT_NAME ||
       input.authorEmail !== BOT_EMAIL || input.committerEmail !== BOT_EMAIL) {
     throw new Error("Stack-pin commit identity is not GitHub Actions.");
