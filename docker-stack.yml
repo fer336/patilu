@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   patilu-web:
-    image: ghcr.io/fer336/patilu-web:v0.1.1
+    image: ghcr.io/fer336/patilu-web:v0.1.4
     environment:
       API_INTERNAL_URL: http://patilu-api:8000
     networks:
@@ -36,7 +36,7 @@ services:
         - traefik.http.services.patilu-web.loadbalancer.server.port=8080
 
   patilu-cms:
-    image: ghcr.io/fer336/patilu-cms:v0.1.1
+    image: ghcr.io/fer336/patilu-cms:v0.1.4
     networks:
       - network_public
     healthcheck:
@@ -58,7 +58,7 @@ services:
         - traefik.http.services.patilu-cms.loadbalancer.server.port=8080
 
   patilu-api:
-    image: ghcr.io/fer336/patilu-api:v0.1.1
+    image: ghcr.io/fer336/patilu-api:v0.1.4
     environment:
       CORS_ORIGINS: '["https://cms-patilu.qeva.xyz","http://localhost:5173"]'
       MEDIA_PUBLIC_URL: https://media-patilu.qeva.xyz/product-images
