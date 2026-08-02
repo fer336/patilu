@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   patilu:
-    image: ghcr.io/fer336/patilu:v0.1.8
+    image: ghcr.io/fer336/patilu:v0.1.9
     networks:
       - network_public
     healthcheck:
