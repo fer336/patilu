@@ -1,15 +1,14 @@
 FROM node:24-alpine AS build
-WORKDIR /workspace
-COPY package.json package-lock.json ./
-COPY patilu/package.json patilu/package.json
-RUN npm ci
-COPY . .
-RUN npm --workspace patilu run build
+WORKDIR /workspace/patilu
+COPY patilu/package.json ./package.json
+RUN npm install
+COPY patilu/ ./
+RUN npm run build
 
 FROM node:24-alpine AS runtime
 ENV HOST=0.0.0.0 PORT=8080 NODE_ENV=production
-WORKDIR /workspace
-COPY --from=build --chown=node:node /workspace/node_modules ./node_modules
+WORKDIR /workspace/patilu
+COPY --from=build --chown=node:node /workspace/patilu/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/patilu/dist ./dist
 USER node
 EXPOSE 8080
