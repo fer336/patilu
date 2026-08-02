@@ -97,8 +97,6 @@ networks:
     driver: overlay
     attachable: false
 
-volumes:
-
 secrets:
   patilu_backend_env:
     external: true
