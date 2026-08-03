@@ -1,12 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-const STABLE_SEMVER = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+export const STABLE_SEMVER = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const IMAGE_PREFIX = "ghcr.io/fer336/";
+export const PATILU_IMAGE_REPOSITORY = `${IMAGE_PREFIX}patilu`;
 const EXPECTED_IMAGES = ["patilu"];
 const PATILU_IMAGE = /ghcr\.io\/fer336\/(patilu):([^\s"']+)/g;
-const BOT_NAME = "github-actions[bot]";
-const BOT_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com";
-
 export function setStackVersion(stack, requestedTag) {
   if (!STABLE_SEMVER.test(requestedTag)) {
     throw new Error("Version must be stable SemVer in vMAJOR.MINOR.PATCH format.");
@@ -40,14 +38,7 @@ export function validateReleaseLineage(input) {
   if (input.releaseSha !== input.eventSha) throw new Error("Release event SHA does not match its tag.");
   if (input.mainSha === input.releaseSha) return "initial";
 
-  const expectedSubject = `chore(deploy): pin stack to ${input.tag}`;
-  if (input.parentShas !== input.releaseSha) throw new Error("Main is not the release commit's direct child.");
-  const expectedSubjectPattern = new RegExp(`^${expectedSubject.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?: \\(#\\d+\\))?$`);
-  if (!expectedSubjectPattern.test(input.subject)) throw new Error("Main child is not the expected stack-pin commit.");
-  if (input.authorName !== BOT_NAME || input.committerName !== BOT_NAME ||
-      input.authorEmail !== BOT_EMAIL || input.committerEmail !== BOT_EMAIL) {
-    throw new Error("Stack-pin commit identity is not GitHub Actions.");
-  }
+  if (input.releaseIsAncestor !== "true") throw new Error("Main is not a descendant of the release commit.");
   if (input.changedFiles !== "docker-stack.yml") throw new Error("Stack-pin commit changed unexpected files.");
   if (input.mainStack !== setStackVersion(input.releaseStack, input.tag)) {
     throw new Error("Current main stack is not the exact release pin update.");
@@ -63,12 +54,7 @@ function main() {
       eventSha: process.env.EVENT_SHA,
       releaseSha: process.env.RELEASE_SHA,
       mainSha: process.env.MAIN_SHA,
-      parentShas: process.env.PARENT_SHAS,
-      subject: process.env.COMMIT_SUBJECT,
-      authorName: process.env.AUTHOR_NAME,
-      authorEmail: process.env.AUTHOR_EMAIL,
-      committerName: process.env.COMMITTER_NAME,
-      committerEmail: process.env.COMMITTER_EMAIL,
+      releaseIsAncestor: process.env.RELEASE_IS_ANCESTOR,
       changedFiles: process.env.CHANGED_FILES,
       releaseStack: readFileSync(new URL("../docker-stack.yml", import.meta.url), "utf8"),
       mainStack: readFileSync(args[1], "utf8"),

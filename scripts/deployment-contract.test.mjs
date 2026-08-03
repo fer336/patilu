@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { strict as assert } from "node:assert";
+import { validateStackDeploy } from "./validate-stack-deploy.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 
@@ -62,6 +63,12 @@ assertIncludes("patilu/Dockerfile", dockerfile, /\/workspace\/patilu\/dist/);
 assertNotIncludes("patilu/Dockerfile", dockerfile, /127\.0\.0\.1:8080\//);
 assertNotIncludes("patilu/Dockerfile", dockerfile, /fetch\(|\/healthz/);
 
+const stackDeployValidator = read("scripts/validate-stack-deploy.mjs");
+assertIncludes("scripts/validate-stack-deploy.mjs", stackDeployValidator, /setStackVersion/);
+assertIncludes("scripts/validate-stack-deploy.mjs", stackDeployValidator, /changed beyond the release image pin/);
+assertIncludes("scripts/validate-stack-deploy.mjs", stackDeployValidator, /stable SemVer/);
+assertIncludes("scripts/validate-stack-deploy.mjs", stackDeployValidator, /validateDeployProvenance/);
+
 const stack = read("docker-stack.yml");
 assertIncludes("docker-stack.yml", stack, /patilu:/);
 assertNotIncludes("docker-stack.yml", stack, /patilu-web:/);
@@ -93,6 +100,13 @@ assertIncludes("docker-stack.yml", stack, /redirectregex\.permanent=true/);
 assertNotIncludes("docker-stack.yml", stack, /ports:/);
 assertNotIncludes("docker-stack.yml", stack, /build:/);
 
+const previousStackFixture = stack.replace(/patilu:\S+/, "patilu:v8.9.10");
+const currentStackFixture = stack.replace(/patilu:\S+/, "patilu:v8.9.11");
+assert.equal(validateStackDeploy(previousStackFixture, currentStackFixture), "v8.9.11");
+assert.throws(() => validateStackDeploy(previousStackFixture, currentStackFixture.replace("patilu:v8.9.11", "patilu:latest")), /stable SemVer/);
+assert.throws(() => validateStackDeploy(previousStackFixture, `${currentStackFixture}\n# unrelated change\n`), /changed beyond/);
+assert.throws(() => validateStackDeploy(currentStackFixture, currentStackFixture), /did not change/);
+
 const workflow = read(".github/workflows/deploy.yml");
 assertIncludes(".github/workflows/deploy.yml", workflow, /on:/);
   assertIncludes(".github/workflows/deploy.yml", workflow, /branches: \[main\]/);
@@ -102,6 +116,7 @@ assertIncludes(".github/workflows/deploy.yml", workflow, /on:/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /contents: read/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/deployment-contract\.test\.mjs/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/set-stack-version\.test\.mjs/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/validate-stack-deploy\.test\.mjs/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu test/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu run typecheck/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu run build/);
@@ -124,8 +139,11 @@ const validation = jobSection(workflow, "release-validation", "build");
 assertIncludes("release-validation job", validation, /\^v\(0\|\[1-9\]\[0-9\]\*\)/);
 assertIncludes("release-validation job", validation, /git rev-parse origin\/main/);
 assertIncludes("release-validation job", validation, /release_sha.*main_sha/);
+assertIncludes("release-validation job", validation, /merge-base --is-ancestor "\$release_sha" "\$main_sha"/);
+assertIncludes("release-validation job", validation, /RELEASE_IS_ANCESTOR/);
 assertIncludes("release-validation job", validation, /node scripts\/set-stack-version\.mjs --validate-release-lineage/);
-assertIncludes("release-validation job", validation, /git diff-tree --no-commit-id --name-only/);
+assertIncludes("release-validation job", validation, /git diff --name-only "\$release_sha" "\$main_sha"/);
+assertNotIncludes("release-validation job", validation, /COMMIT_SUBJECT|AUTHOR_NAME|COMMITTER_NAME|PARENT_SHAS/);
 
 const promote = jobSection(workflow, "promote", "update-stack");
 assertIncludes("promote job", promote, /needs: \[release-validation, build\]/);
@@ -138,28 +156,57 @@ assertNotIncludes("promote job", promote, /:(?:latest|production)/);
 const updateStack = jobSection(workflow, "update-stack", "deploy");
 assertIncludes("update-stack job", updateStack, /needs: \[release-validation, promote\]/);
 assertIncludes("update-stack job", updateStack, /contents: write/);
+assertIncludes("update-stack job", updateStack, /pull-requests: write/);
 assertIncludes("update-stack job", updateStack, /git rev-parse HEAD/);
 assertIncludes("update-stack job", updateStack, /git rev-parse origin\/main/);
 assertIncludes("update-stack job", updateStack, /node scripts\/set-stack-version\.mjs/);
+assertIncludes("update-stack job", updateStack, /persist-credentials: false/);
+assertIncludes("update-stack job", updateStack, /GH_TOKEN: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/);
+assertIncludes("update-stack job", updateStack, /RELEASE_PR_TOKEN: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/);
+assertIncludes("update-stack job", updateStack, /test -n "\$\{RELEASE_PR_TOKEN:-\}"/);
+assertIncludes("update-stack job", updateStack, /git remote set-url origin "https:\/\/x-access-token:\$\{RELEASE_PR_TOKEN\}@github\.com\/\$\{\{ github\.repository \}\}\.git"/);
+assertIncludes("update-stack job", updateStack, /STACK_BRANCH: chore\/pin-stack-\$\{\{ github\.event\.release\.tag_name \}\}/);
+assertIncludes("update-stack job", updateStack, /git fetch origin "refs\/heads\/\$STACK_BRANCH:refs\/remotes\/origin\/\$STACK_BRANCH" \|\| true/);
+assertIncludes("update-stack job", updateStack, /remote_stack_sha=.*refs\/remotes\/origin\/\$STACK_BRANCH/);
 assertIncludes("update-stack job", updateStack, /git add docker-stack\.yml/);
-assertIncludes("update-stack job", updateStack, /git push origin main/);
+assertIncludes("update-stack job", updateStack, /git push --force-with-lease="refs\/heads\/\$STACK_BRANCH:\$remote_stack_sha" origin "HEAD:refs\/heads\/\$STACK_BRANCH"/);
+assertIncludes("update-stack job", updateStack, /git push origin "HEAD:refs\/heads\/\$STACK_BRANCH"/);
+assertIncludes("update-stack job", updateStack, /gh pr list --head "\$STACK_BRANCH" --base main/);
+assertIncludes("update-stack job", updateStack, /gh pr create --head "\$STACK_BRANCH" --base main/);
+assertIncludes("update-stack job", updateStack, /gh pr edit "\$pr_url"/);
+assertIncludes("update-stack job", updateStack, /body-file "\$body_file"/);
 assertIncludes("update-stack job", updateStack, /EXPECTED_MAIN_SHA:.*main_sha/);
-assertIncludes("update-stack job", updateStack, /stack_sha=.*git rev-parse HEAD/);
-assertNotIncludes("update-stack job", updateStack, /--force/);
+assertIncludes("update-stack job", updateStack, /pr_url=.*GITHUB_OUTPUT/);
+assertNotIncludes("update-stack job", updateStack, /git push origin main/);
 assertNotIncludes("update-stack job", updateStack, /exit 0/);
 
-assert.equal((workflow.match(/contents: write/g) ?? []).length, 2, "only update-stack and tag-deploy may write contents");
-for (const mutationJob of [promote, updateStack, jobSection(workflow, "deploy")]) {
+assert.equal((workflow.match(/contents: write/g) ?? []).length, 1, "only update-stack may write contents");
+assertNotIncludes("workflow", workflow, /git push origin main/);
+for (const mutationJob of [promote, updateStack]) {
   assertIncludes("mutation job", mutationJob, /if: github\.event_name == 'release'/);
 }
 
 const deploy = jobSection(workflow, "deploy");
-assertIncludes("deploy job", deploy, /needs: \[release-validation, update-stack\]/);
-assertIncludes("deploy job", deploy, /github\.event\.action == 'published'/);
-assertIncludes("deploy job", deploy, /needs\.release-validation\.result == 'success'/);
-assertIncludes("deploy job", deploy, /permissions:\n      contents: read/);
-assertIncludes("deploy job", deploy, /ref: \$\{\{ needs\.update-stack\.outputs\.stack_sha \}\}/);
-assertIncludes("deploy job", deploy, /git rev-parse origin\/main.*needs\.update-stack\.outputs\.stack_sha/);
+assertIncludes("deploy job", deploy, /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
+assertIncludes("deploy job", deploy, /needs: \[checks\]/);
+assertIncludes("deploy job", deploy, /permissions:\n      contents: read\n      packages: read/);
+assertIncludes("deploy job", deploy, /Detect stack-only SemVer pin/);
+assertIncludes("deploy job", deploy, /github\.event\.before/);
+assertIncludes("deploy job", deploy, /changed_files.*docker-stack\.yml/);
+assertIncludes("deploy job", deploy, /git show "\$\{\{ github\.event\.before \}\}:docker-stack\.yml"/);
+assertIncludes("deploy job", deploy, /node scripts\/validate-stack-deploy\.mjs --before/);
+assertIncludes("deploy job", deploy, /stack_tag=.*GITHUB_OUTPUT/);
+assertIncludes("deploy job", deploy, /deploy_stack=true/);
+assertIncludes("deploy job", deploy, /steps\.stack-pin\.outputs\.deploy_stack == 'true'/);
+assertIncludes("deploy job", deploy, /gh release view "\$\{\{ steps\.stack-pin\.outputs\.stack_tag \}\}" --json tagName,isDraft,isPrerelease/);
+assertIncludes("deploy job", deploy, /docker\/login-action@v3/);
+assertIncludes("deploy job", deploy, /docker\/setup-buildx-action@v3/);
+assertIncludes("deploy job", deploy, /image_reference="\$\{REGISTRY\}\/\$\{IMAGE_OWNER\}\/patilu:\$\{\{ steps\.stack-pin\.outputs\.stack_tag \}\}"/);
+assertIncludes("deploy job", deploy, /docker buildx imagetools inspect "\$image_reference"/);
+assertIncludes("deploy job", deploy, /node scripts\/validate-stack-deploy\.mjs/);
+assertIncludes("deploy job", deploy, /--release-metadata "\$RUNNER_TEMP\/release\.json"/);
+assertIncludes("deploy job", deploy, /--image-reference "\$image_reference"/);
+assertNotIncludes("deploy job", deploy, /github\.event\.action == 'published'/);
 assertNotIncludes("deploy job", deploy, /needs: \[build\]/);
   for (const option of [
     /--connect-timeout 10/,
@@ -179,12 +226,11 @@ assertIncludes("tag-deploy job", tagDeploy, /context: \./);
 assertIncludes("tag-deploy job", tagDeploy, /file: patilu\/Dockerfile/);
 assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
 assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);
-assertIncludes("tag-deploy job", tagDeploy, /node scripts\/set-stack-version\.mjs/);
-assertIncludes("tag-deploy job", tagDeploy, /git add docker-stack\.yml/);
-assertIncludes("tag-deploy job", tagDeploy, /git push origin main/);
-assertIncludes("tag-deploy job", tagDeploy, /PORTAINER_WEBHOOK: \$\{\{ secrets\.PORTAINER_WEBHOOK \}\}/);
-assertIncludes("tag-deploy job", tagDeploy, /--url "\$PORTAINER_WEBHOOK"/);
-assertIncludes("tag-deploy job", tagDeploy, /contents: write/);
+assertIncludes("tag-deploy job", tagDeploy, /contents: read/);
+assertNotIncludes("tag-deploy job", tagDeploy, /node scripts\/set-stack-version\.mjs/);
+assertNotIncludes("tag-deploy job", tagDeploy, /git add docker-stack\.yml/);
+assertNotIncludes("tag-deploy job", tagDeploy, /git push origin main/);
+assertNotIncludes("tag-deploy job", tagDeploy, /PORTAINER_WEBHOOK: \$\{\{ secrets\.PORTAINER_WEBHOOK \}\}/);
 
 const readme = read("README.md");
 const outOfScope = readme.slice(readme.indexOf("## Out of scope"), readme.indexOf("## Required external inputs"));

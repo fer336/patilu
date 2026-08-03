@@ -39,8 +39,7 @@ const releaseSha = "a".repeat(40);
 const childSha = "b".repeat(40);
 const lineage = {
   tag: "v1.2.3", eventSha: releaseSha, releaseSha, mainSha: releaseSha,
-  parentShas: "", subject: "", authorName: "", authorEmail: "",
-  committerName: "", committerEmail: "", changedFiles: "",
+  changedFiles: "",
   releaseStack: stack, mainStack: stack,
 };
 assert.equal(validateReleaseLineage(lineage), "initial");
@@ -48,23 +47,14 @@ assert.equal(validateReleaseLineage(lineage), "initial");
 const recovery = {
   ...lineage,
   mainSha: childSha,
-  parentShas: releaseSha,
-  subject: "chore(deploy): pin stack to v1.2.3",
-  authorName: "github-actions[bot]",
-  authorEmail: "41898282+github-actions[bot]@users.noreply.github.com",
-  committerName: "github-actions[bot]",
-  committerEmail: "41898282+github-actions[bot]@users.noreply.github.com",
+  releaseIsAncestor: "true",
   changedFiles: "docker-stack.yml",
   mainStack: updated,
 };
 assert.equal(validateReleaseLineage(recovery), "recovery");
-assert.equal(validateReleaseLineage({ ...recovery, subject: "chore(deploy): pin stack to v1.2.3 (#40)" }), "recovery");
 assert.throws(() => validateReleaseLineage({ ...recovery, eventSha: childSha }), /event SHA/);
-assert.throws(() => validateReleaseLineage({ ...recovery, subject: "fix: unrelated" }), /expected stack-pin/);
-assert.throws(() => validateReleaseLineage({ ...recovery, authorName: "Not Actions" }), /identity/);
+assert.throws(() => validateReleaseLineage({ ...recovery, releaseIsAncestor: "false" }), /descendant/);
 assert.throws(() => validateReleaseLineage({ ...recovery, changedFiles: "README.md\ndocker-stack.yml" }), /unexpected files/);
-assert.throws(() => validateReleaseLineage({ ...recovery, parentShas: childSha }), /direct child/);
-assert.throws(() => validateReleaseLineage({ ...recovery, parentShas: `${releaseSha} ${childSha}` }), /direct child/);
 assert.throws(() => validateReleaseLineage({ ...recovery, mainStack: updated.replace("patilu:v1.2.3", "patilu:v1.2.4") }), /exact release pin/);
 assert.throws(() => validateReleaseLineage({ ...recovery, mainStack: updated.replaceAll("v1.2.3", "v1.2.4") }), /exact release pin/);
 assert.throws(() => validateReleaseLineage({ ...recovery, tag: "v1.2.3-rc.1" }), /stable SemVer/);
