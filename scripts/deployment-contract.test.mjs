@@ -85,7 +85,11 @@ assertNotIncludes("docker-stack.yml", stack, /stripprefix/);
 assertNotIncludes("docker-stack.yml", stack, /PathPrefix/);
 assertNotIncludes("docker-stack.yml", stack, /priority=100/);
 assertNotIncludes("docker-stack.yml", stack, /cms-patilu\.qeva\.xyz/);
-assertIncludes("docker-stack.yml", stack, /Host\(`patilu\.qeva.xyz`\)/);
+assertNotIncludes("docker-stack.yml", stack, /patilu\.qeva\.xyz/);
+assertIncludes("docker-stack.yml", stack, /Host\(`patilulu\.com`\)/);
+assertIncludes("docker-stack.yml", stack, /Host\(`www\.patilulu\.com`\)/);
+assertIncludes("docker-stack.yml", stack, /redirectregex\.replacement=https:\/\/patilulu\.com\/\$\$\{1\}/);
+assertIncludes("docker-stack.yml", stack, /redirectregex\.permanent=true/);
 assertNotIncludes("docker-stack.yml", stack, /ports:/);
 assertNotIncludes("docker-stack.yml", stack, /build:/);
 
@@ -199,6 +203,7 @@ assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "docker
 assertIncludes(".github/dependabot.yml", dependabot, /groups:/);
 
 const astroConfig = read("patilu/astro.config.mjs");
-assertIncludes("patilu/astro.config.mjs", astroConfig, /site: "https:\/\/patilu\.qeva\.xyz"/);
+assertIncludes("patilu/astro.config.mjs", astroConfig, /site: "https:\/\/patilulu\.com"/);
+assertNotIncludes("patilu/astro.config.mjs", astroConfig, /patilu\.qeva\.xyz/);
 
 console.log("deployment contract passed");
