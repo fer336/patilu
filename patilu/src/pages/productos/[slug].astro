@@ -9,8 +9,44 @@ const product = await getPublishedProduct(Astro.params.slug ?? "");
 if (!product) return new Response("Producto no encontrado", { status: 404 });
 const primary = getPrimaryImage(product);
 const thumbnails = product.images.filter((image) => !image.is_primary).sort((a, b) => a.position - b.position);
+const siteUrl = "https://patilulu.com";
+const productUrl = new URL(`/productos/${product.slug}`, siteUrl).toString();
+const productImageUrl = primary ? new URL(primary.url, siteUrl).toString() : new URL("/assets/og-image.png", siteUrl).toString();
+const availabilityUrl = {
+  available: "https://schema.org/InStock",
+  made_to_order: "https://schema.org/PreOrder",
+  reserved: "https://schema.org/LimitedAvailability",
+  sold_out: "https://schema.org/OutOfStock",
+}[product.availability];
+const productJsonLd: Record<string, unknown> = {
+  "@type": "Product",
+  "@id": `${productUrl}#product`,
+  name: product.title,
+  description: product.description,
+  image: productImageUrl,
+  url: productUrl,
+  category: product.category,
+};
+if (product.price !== null) {
+  productJsonLd.offers = {
+    "@type": "Offer",
+    price: product.price,
+    priceCurrency: product.currency,
+    availability: availabilityUrl,
+    url: productUrl,
+  };
+}
+const breadcrumbJsonLd = {
+  "@type": "BreadcrumbList",
+  "@id": `${productUrl}#breadcrumb`,
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+    { "@type": "ListItem", position: 2, name: "Muñecos", item: new URL("/productos", siteUrl).toString() },
+    { "@type": "ListItem", position: 3, name: product.title, item: productUrl },
+  ],
+};
 ---
-<BaseLayout title={`${product.title} | Patilu`} description={product.description} activePath="/productos">
+<BaseLayout title={`${product.title} | Patilu`} description={product.description} ogType="product" canonicalPath={`/productos/${product.slug}`} structuredData={[productJsonLd, breadcrumbJsonLd]} activePath="/productos">
   <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Muñecos", href: "/productos" }, { label: product.title }]} />
   <section class="section product-page">
     <div class="container product-layout">

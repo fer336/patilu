@@ -6,10 +6,50 @@ interface Props {
   description: string;
   ogTitle?: string;
   ogDescription?: string;
+  ogType?: "website" | "product";
+  canonicalPath?: string;
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
   activePath?: string;
 }
 
-const { title, description, ogTitle = title, ogDescription = description, activePath = "" } = Astro.props;
+const {
+  title,
+  description,
+  ogTitle = title,
+  ogDescription = description,
+  ogType = "website",
+  canonicalPath,
+  structuredData = [],
+  activePath = "",
+} = Astro.props;
+
+const siteUrl = "https://patilulu.com";
+const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
+const ogImageUrl = new URL("/assets/og-image.png", siteUrl).toString();
+const pageStructuredData = Array.isArray(structuredData) ? structuredData : [structuredData];
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "Patilu",
+      url: siteUrl,
+      logo: ogImageUrl,
+      image: ogImageUrl,
+      description: "Muñecos tejidos al crochet hechos a mano en Pinamar, Argentina.",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: siteUrl,
+      name: "Patilu",
+      inLanguage: "es-AR",
+      publisher: { "@id": `${siteUrl}/#organization` },
+    },
+    ...pageStructuredData,
+  ],
+};
 
 const nav = [
   ["/productos", "Muñecos"],
@@ -28,10 +68,19 @@ const isActive = (href: string) => activePath === href || (href !== "/" && activ
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#fff9f2" />
+    <link rel="canonical" href={canonicalUrl} />
     <meta property="og:title" content={ogTitle} />
     <meta property="og:description" content={ogDescription} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content="Muñecos tejidos al crochet de Patilu" />
     <meta property="og:locale" content="es_AR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={ogDescription} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />

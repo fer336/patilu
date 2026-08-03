@@ -26,10 +26,20 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=network_public
-        - traefik.http.routers.patilu.rule=Host(`patilu.qeva.xyz`)
+        - traefik.http.routers.patilu.rule=Host(`patilulu.com`)
         - traefik.http.routers.patilu.entrypoints=websecure
         - traefik.http.routers.patilu.tls.certresolver=letsencryptresolver
         - traefik.http.routers.patilu.priority=10
+        - traefik.http.routers.patilu-www.rule=Host(`www.patilulu.com`)
+        - traefik.http.routers.patilu-www.entrypoints=web
+        - traefik.http.routers.patilu-www.middlewares=patilu-www-redirect
+        - traefik.http.routers.patilu-www-secure.rule=Host(`www.patilulu.com`)
+        - traefik.http.routers.patilu-www-secure.entrypoints=websecure
+        - traefik.http.routers.patilu-www-secure.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.patilu-www-secure.middlewares=patilu-www-redirect
+        - traefik.http.middlewares.patilu-www-redirect.redirectregex.regex=^https?://www\.patilulu\.com/(.*)
+        - traefik.http.middlewares.patilu-www-redirect.redirectregex.replacement=https://patilulu.com/$${1}
+        - traefik.http.middlewares.patilu-www-redirect.redirectregex.permanent=true
         - traefik.http.services.patilu.loadbalancer.server.port=8080
 
 networks:

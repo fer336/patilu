@@ -11,10 +11,23 @@ if (!isCategorySlug(slug)) return new Response("Categoría no encontrada", { sta
 const label = CATEGORY_LABELS[slug];
 const allProducts = await getPublishedProducts();
 const products = getProductsByCategory(allProducts, slug);
+const siteUrl = "https://patilulu.com";
+const categoryUrl = new URL(`/categoria/${slug}`, siteUrl).toString();
+const breadcrumbJsonLd = {
+  "@type": "BreadcrumbList",
+  "@id": `${categoryUrl}#breadcrumb`,
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+    { "@type": "ListItem", position: 2, name: "Muñecos", item: new URL("/productos", siteUrl).toString() },
+    { "@type": "ListItem", position: 3, name: label, item: categoryUrl },
+  ],
+};
 ---
 <BaseLayout
   title={`${label} tejidos al crochet | Patilu`}
   description={`Descubrí la categoría ${label} del catálogo de muñecos y objetos tejidos al crochet de Patilu.`}
+  canonicalPath={`/categoria/${slug}`}
+  structuredData={breadcrumbJsonLd}
   activePath="/productos"
 >
   <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Muñecos", href: "/productos" }, { label }]} />
