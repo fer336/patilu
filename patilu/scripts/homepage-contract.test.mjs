@@ -39,14 +39,9 @@ const requiredAssets = [
   "taza.webp",
   "muneco-stranger-1.webp",
   "muneco-stranger-2.webp",
-  "osito.webp",
-  "capibara.webp",
-  "conejita.webp",
-  "ballenita.webp",
   "muneca-floral.webp",
-  "unicornio.webp",
-  "personalizado.webp",
   "artesana.webp",
+  "portada2.png",
 ];
 
 for (const asset of requiredAssets) {
@@ -74,7 +69,7 @@ for (const claim of unsupportedClaims) {
 for (const requiredCopy of [
   "Consultar precio",
   "5492254531588",
-  "Consulta de catálogo",
+  "Explorar catálogo",
   "Pedido personalizado",
 ]) {
   assert.ok(siteSource.includes(requiredCopy), `Missing neutral copy: ${requiredCopy}`);
