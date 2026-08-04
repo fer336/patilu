@@ -58,6 +58,16 @@ const nav = [
   ["/sobre-patilu", "Sobre Patilu"],
 ];
 
+const footerLinks = [
+  ...nav,
+  ["/como-comprar", "Cómo comprar"],
+  ["/envios", "Envíos"],
+  ["/preguntas-frecuentes", "Preguntas frecuentes"],
+  ["/contacto", "Contacto"],
+  ["/privacidad", "Privacidad"],
+  ["/terminos", "Términos"],
+];
+
 const isActive = (href: string) => activePath === href || (href !== "/" && activePath.startsWith(`${href}/`));
 ---
 <!doctype html>
@@ -83,7 +93,7 @@ const isActive = (href: string) => activePath === href || (href !== "/" && activ
     <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -95,7 +105,7 @@ const isActive = (href: string) => activePath === href || (href !== "/" && activ
         </a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav"><span></span><span></span><span></span><span class="sr-only">Abrir menú</span></button>
         <nav id="main-nav" class="main-nav" aria-label="Navegación principal">{nav.map(([href, label]) => <a class={isActive(href) ? "active" : ""} href={href} aria-current={isActive(href) ? "page" : undefined}>{label}</a>)}</nav>
-        <a class="button button-whatsapp nav-cta" href="/contacto"><span aria-hidden="true">◉</span> Consultar contacto</a>
+        <a class="button button-primary nav-cta" href="/contacto">Consultar</a>
       </div>
     </header>
 
@@ -104,33 +114,13 @@ const isActive = (href: string) => activePath === href || (href !== "/" && activ
     </main>
 
     <footer class="site-footer">
-      <div class="container footer-grid">
-        <div>
-          <a class="brand footer-brand" href="/"><svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><circle cx="27" cy="31" r="17" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M13 24c12 3 25 10 34 24M14 38c11-9 23-15 36-15M22 15c4 12 12 25 22 35M13 31c11-4 24-7 38-4M21 49c10-10 17-22 20-35" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Patilu</span></a>
-          <p>Muñecos tejidos al crochet hechos a mano en Pinamar.</p>
-          <small>♡ Hecho a mano en Pinamar, Argentina.</small>
-        </div>
-        <div>
-          <h3>Navegación</h3>
-          {nav.map(([href, label]) => <a href={href}>{label}</a>)}
-        </div>
-        <div>
-          <h3>Ayuda</h3>
-          <a href="/como-comprar">Cómo comprar</a>
-          <a href="/envios">Envíos</a>
-          <a href="/preguntas-frecuentes">Preguntas frecuentes</a>
-        </div>
-        <div>
-          <h3>Legal</h3>
-          <a href="/privacidad">Privacidad</a>
-          <a href="/terminos">Términos</a>
-        </div>
-        <div>
-          <h3>Contacto</h3>
-          <a href="/contacto">Ver datos de contacto</a>
-          <a href="/personalizados">Preparar consulta personalizada</a>
-          <a href="/productos">Consultar catálogo</a>
-        </div>
+      <div class="container footer-shell">
+        <a class="brand footer-brand" href="/"><svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><circle cx="27" cy="31" r="17" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M13 24c12 3 25 10 34 24M14 38c11-9 23-15 36-15M22 15c4 12 12 25 22 35M13 31c11-4 24-7 38-4M21 49c10-10 17-22 20-35" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Patilu</span></a>
+        <p class="footer-close">Cada muñeco se teje a mano, punto por punto.<br /><span class="footer-sign">— Patilu, Pinamar</span></p>
+        <nav class="footer-links" aria-label="Enlaces del sitio">
+          {footerLinks.map(([href, label]) => <a href={href}>{label}</a>)}
+        </nav>
+        <small class="footer-note">♡ Hecho a mano en Pinamar, Argentina.</small>
       </div>
     </footer>
     <a class="floating-whatsapp" href="/contacto" aria-label="Ver datos de contacto de Patilu"><span>◉</span></a>
@@ -148,14 +138,17 @@ const isActive = (href: string) => activePath === href || (href !== "/" && activ
 </html>
 
 <style is:global>
-  :root{--background:#fff9f2;--surface:#fffdf9;--primary:#e9a3ae;--primary-dark:#8e4e5b;--lavender:#cfc4e8;--text:#46383a;--muted:#78696c;--border:#e8dcdd;--footer:#49352e;--shadow:0 18px 45px rgba(70,56,58,.1);--shadow-sm:0 10px 24px rgba(70,56,58,.08);--container:1200px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--background);font-family:"Nunito Sans",system-ui,sans-serif;line-height:1.55}body.menu-open{overflow:hidden}img{display:block;width:100%}a{color:inherit;text-decoration:none}button,input,textarea{font:inherit}button,a{-webkit-tap-highlight-color:transparent}h1,h2,.brand{font-family:"DM Serif Display",Georgia,serif;font-weight:400}h1,h2,h3,p{margin-top:0}h1{margin-bottom:20px;font-size:clamp(2.7rem,5vw,5rem);line-height:.98;letter-spacing:-.035em}h1 span,h2 span{color:var(--primary)}h2{margin-bottom:14px;font-size:clamp(2rem,3.2vw,3.25rem);line-height:1.05;letter-spacing:-.025em}h3{margin-bottom:8px;line-height:1.2}p{color:var(--muted)}:focus-visible{outline:3px solid #8e4e5b;outline-offset:4px}.container{width:min(calc(100% - 40px),var(--container));margin-inline:auto}.section{padding:88px 0}.eyebrow{margin-bottom:12px;color:var(--primary-dark);font-size:.78rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.skip-link{position:fixed;z-index:999;top:12px;left:12px;transform:translateY(-140%);padding:10px 14px;border-radius:10px;background:var(--text);color:#fff}.skip-link:focus{transform:translateY(0)}
-  .site-header{position:sticky;z-index:100;top:0;border-bottom:1px solid rgba(232,220,221,.75);background:rgba(255,253,249,.92);backdrop-filter:blur(16px)}.nav-wrap{min-height:82px;display:flex;align-items:center;gap:28px}.brand{display:inline-flex;align-items:center;color:#de7e8e;font-size:2.35rem;white-space:nowrap}.brand-mark{width:44px;height:44px}.main-nav{display:flex;align-items:center;gap:26px;margin-left:auto;font-weight:700}.main-nav a{position:relative;padding:28px 0 24px}.main-nav a:after{position:absolute;right:0;bottom:18px;left:0;height:2px;border-radius:999px;background:var(--primary);content:"";transform:scaleX(0);transition:transform .2s ease}.main-nav a:hover:after,.main-nav a.active:after{transform:scaleX(1)}.menu-toggle{display:none;width:44px;height:44px;padding:10px;border:0;background:transparent}.menu-toggle span:not(.sr-only){display:block;height:2px;margin:6px 0;border-radius:2px;background:var(--text)}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:1px solid transparent;border-radius:14px;cursor:pointer;font-weight:800;text-align:center;transition:transform .2s ease,box-shadow .2s ease,background .2s ease}.button:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}.button-primary{background:linear-gradient(135deg,#eb8f9e,#df7184);color:#fff}.button-secondary{background:linear-gradient(135deg,#bea8d6,#9f83bc);color:#fff}.button-whatsapp{background:#7ca760;color:#fff}.button-outline{width:100%;min-height:42px;border-color:var(--primary);background:transparent;color:var(--primary-dark)}.button-soft{background:#fff6ee;color:var(--primary-dark);border-color:#f1dad6}.text-link{color:#d56879;font-weight:800}
+  /* redesign: soft photographic boutique · ref: user-supplied mockup
+   * nav: full-width bar, sticky · footer: Ft6 letter-close + flat link row
+   * type: DM Serif Display (display) + Nunito Sans (body) · buttons: full pill, soft shadow
+   */
+  :root{--background:#fff9f2;--surface:#fffdf9;--primary:#e9a3ae;--primary-dark:#8e4e5b;--lavender:#cfc4e8;--text:#46383a;--muted:#78696c;--border:#e8dcdd;--footer:#49352e;--shadow:0 18px 45px rgba(70,56,58,.1);--shadow-sm:0 10px 24px rgba(70,56,58,.08);--container:1200px;--ease-out:cubic-bezier(.16,1,.3,1);--radius-lg:28px;--radius-md:18px;--border-w:0px;--shadow-clay:0 16px 38px rgba(70,56,58,.12);--shadow-clay-press:0 6px 16px rgba(70,56,58,.14)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background-color:var(--background);background-image:repeating-radial-gradient(circle at 0 0,transparent 0,transparent 13px,rgba(233,163,174,.16) 13px,rgba(233,163,174,.16) 14px,transparent 14px,transparent 28px),repeating-radial-gradient(circle at 28px 28px,transparent 0,transparent 13px,rgba(207,196,232,.14) 13px,rgba(207,196,232,.14) 14px,transparent 14px,transparent 28px);background-size:28px 28px;font-family:"Nunito Sans",system-ui,sans-serif;line-height:1.55}body.menu-open{overflow:hidden}img{display:block;width:100%}a{color:inherit;text-decoration:none}button,input,textarea{font:inherit}button,a{-webkit-tap-highlight-color:transparent}h1,h2,.brand{font-family:"DM Serif Display",Georgia,serif;font-weight:400}h1,h2,h3,p{margin-top:0}h1{margin-bottom:20px;font-size:clamp(2.7rem,5vw,5rem);line-height:.98;letter-spacing:-.035em}h1 span,h2 span{color:var(--primary)}h2{margin-bottom:14px;font-size:clamp(2rem,3.2vw,3.25rem);line-height:1.05;letter-spacing:-.025em}h3{margin-bottom:8px;line-height:1.2}p{color:var(--muted)}:focus-visible{outline:3px solid #8e4e5b;outline-offset:4px}.container{width:min(calc(100% - 40px),var(--container));margin-inline:auto}.section{padding:88px 0}.eyebrow{margin-bottom:12px;color:var(--primary-dark);font-size:.78rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.skip-link{position:fixed;z-index:999;top:12px;left:12px;transform:translateY(-140%);padding:10px 14px;border-radius:10px;background:var(--text);color:#fff}.skip-link:focus{transform:translateY(0)}
+  .site-header{position:sticky;z-index:300;top:0;background:rgba(255,249,242,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(232,220,221,.7)}.nav-wrap{min-height:82px;display:flex;align-items:center;gap:28px}.brand{display:inline-flex;align-items:center;gap:8px;color:#de7e8e;font-size:2rem;white-space:nowrap}.brand-mark{width:38px;height:38px;flex:none}.main-nav{display:flex;align-items:center;gap:26px;margin-left:auto;font-weight:700;font-size:.94rem}.main-nav a:not(.nav-cta){position:relative;padding:6px 0}.main-nav a:not(.nav-cta):after{position:absolute;right:0;bottom:0;left:0;height:2px;border-radius:999px;background:var(--primary);content:"";transform:scaleX(0);transition:transform .2s var(--ease-out)}.main-nav a:not(.nav-cta):hover:after,.main-nav a.active:after{transform:scaleX(1)}.nav-cta{min-height:42px;padding:10px 22px;font-size:.88rem}.menu-toggle{display:none;width:40px;height:40px;padding:9px;border:0;border-radius:50%;background:transparent;flex:none;cursor:pointer}.menu-toggle span:not(.sr-only){display:block;height:2px;margin:6px 0;border-radius:2px;background:var(--text)}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border:var(--border-w) solid transparent;border-radius:999px;cursor:pointer;font-weight:800;text-align:center;transition:transform .2s var(--ease-out),box-shadow .2s var(--ease-out)}.button:hover{transform:translateY(-2px);box-shadow:var(--shadow-clay)}.button:active{transform:translateY(0);box-shadow:var(--shadow-clay-press)}.button-primary{background:var(--primary);color:#fff;box-shadow:0 10px 24px rgba(233,163,174,.4)}.button-secondary{background:var(--surface);color:var(--primary-dark);border-color:rgba(232,220,221,.9);box-shadow:0 8px 20px rgba(70,56,58,.06)}.button-whatsapp{background:#7ca760;color:#fff}.button-outline{width:100%;min-height:42px;background:var(--surface);color:var(--primary-dark);border-color:rgba(232,220,221,.9)}.button-soft{background:#fff6ee;color:var(--primary-dark)}.text-link{color:#d56879;font-weight:800}
   .section-heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:32px}.section-heading.compact{margin-bottom:20px}
   .breadcrumbs{padding:16px 0}.breadcrumbs ol{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none;font-size:.85rem;color:var(--muted)}.breadcrumbs li{display:flex;align-items:center;gap:6px}.breadcrumbs li:not(:last-child):after{content:"/";color:var(--border)}.breadcrumbs a{font-weight:700;color:var(--primary-dark)}.breadcrumbs a:hover{text-decoration:underline}.breadcrumbs [aria-current="page"]{font-weight:700;color:var(--text)}
-  .site-footer{padding:60px 0 34px;background:var(--footer);color:#fff8ee}.footer-grid{display:grid;grid-template-columns:1.5fr repeat(4,1fr);gap:40px}.footer-brand{color:#f0a2ad}.site-footer p,.site-footer small{color:#eadfd6}.site-footer h3{margin-bottom:14px;font-size:.9rem}.site-footer a:not(.brand){display:block;width:max-content;margin:8px 0;color:#eadfd6;font-size:.88rem}.site-footer a:hover{color:#f4dda4}.floating-whatsapp{position:fixed;z-index:120;right:22px;bottom:22px;width:64px;height:64px;display:grid;place-items:center;border:5px solid rgba(255,255,255,.75);border-radius:50%;background:#55b84a;color:#fff;box-shadow:0 12px 30px rgba(53,117,46,.32);font-size:1.7rem;font-weight:900;transition:transform .2s ease}.floating-whatsapp:hover{transform:scale(1.06)}
-  @media (max-width:1100px){.nav-cta{display:none}.footer-grid{grid-template-columns:1.5fr 1fr 1fr}.footer-grid>div:nth-child(4),.footer-grid>div:nth-child(5){grid-column:span 1}}
-  @media (max-width:900px){.section{padding:70px 0}.menu-toggle{display:block;margin-left:auto}.main-nav{position:fixed;inset:82px 0 auto;display:grid;gap:0;padding:18px 20px 28px;border-bottom:1px solid var(--border);background:rgba(255,253,249,.98);box-shadow:var(--shadow);transform:translateY(-130%);transition:transform .24s ease;visibility:hidden}.main-nav.open{transform:translateY(0);visibility:visible}.main-nav a{padding:14px 0;border-bottom:1px solid rgba(232,220,221,.65)}.main-nav a:after{display:none}.footer-grid{grid-template-columns:1fr 1fr}.footer-grid>div:first-child{grid-column:1/-1}}
-  @media (max-width:680px){.container{width:min(calc(100% - 28px),var(--container))}.section{padding:58px 0}h1{font-size:clamp(2.5rem,12vw,4rem)}.brand{font-size:2rem}.brand-mark{width:38px;height:38px}.section-heading{align-items:start;flex-direction:column;gap:10px}.footer-grid{grid-template-columns:1fr 1fr;gap:34px}}
-  @media (max-width:420px){.footer-grid{grid-template-columns:1fr}.footer-grid>div{grid-column:auto!important}}
+  .site-footer{padding:64px 0 40px;background:var(--footer);color:#fff8ee}.footer-shell{display:flex;flex-direction:column;align-items:flex-start;gap:20px;max-width:640px}.footer-brand{color:#f0a2ad;font-size:1.7rem}.footer-close{margin:0;max-width:46ch;font-family:"DM Serif Display",Georgia,serif;font-style:italic;font-size:1.3rem;line-height:1.45;color:#fff8ee}.footer-sign{display:inline-block;margin-top:6px;font-style:normal;font-weight:700;color:#f0a2ad}.footer-links{display:flex;flex-wrap:wrap;gap:8px 22px;width:100%;padding-top:20px;border-top:1px solid rgba(255,248,238,.16)}.footer-links a{color:#eadfd6;font-size:.86rem;font-weight:700}.footer-links a:hover,.footer-links a:focus-visible{color:#f4dda4}.footer-note{color:#c9b9ae;font-size:.82rem}.floating-whatsapp{position:fixed;z-index:120;right:22px;bottom:22px;width:64px;height:64px;display:grid;place-items:center;border:5px solid rgba(255,255,255,.75);border-radius:50%;background:#55b84a;color:#fff;box-shadow:0 12px 30px rgba(53,117,46,.32);font-size:1.7rem;font-weight:900;transition:transform .2s ease}.floating-whatsapp:hover{transform:scale(1.06)}
+  @media (max-width:1100px){.nav-cta{display:none}}
+  @media (max-width:900px){.section{padding:70px 0}.menu-toggle{display:block;margin-left:auto}.main-nav{position:fixed;z-index:19;inset:82px 0 auto;display:grid;gap:0;padding:18px 20px 28px;border-bottom:1px solid var(--border);background:rgba(255,253,249,.98);box-shadow:var(--shadow);transform:translateY(-130%);transition:transform .24s ease;visibility:hidden}.main-nav.open{transform:translateY(0);visibility:visible}.main-nav a:not(.nav-cta){padding:14px 0;border-bottom:1px solid rgba(232,220,221,.65)}.main-nav a:not(.nav-cta):after{display:none}}
+  @media (max-width:680px){.container{width:min(calc(100% - 28px),var(--container))}.section{padding:58px 0}h1{font-size:clamp(2.5rem,12vw,4rem)}.brand{font-size:1.7rem}.brand-mark{width:32px;height:32px}.section-heading{align-items:start;flex-direction:column;gap:10px}.footer-links{gap:8px 16px}}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>

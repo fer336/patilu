@@ -1,0 +1,378 @@
+---
+interface CarouselProduct {
+  slug: string;
+  title: string;
+  price: string;
+  availability: string;
+  image?: { url: string; alt_text: string } | null;
+}
+
+interface Props {
+  products: CarouselProduct[];
+}
+
+const { products } = Astro.props;
+---
+
+{products.length > 0 && (
+  <div class="product-carousel" data-product-carousel>
+    <div
+      class="carousel-stage"
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="Muñecos destacados"
+    >
+      <div class="carousel-track" data-carousel-track>
+        {products.map((product, index) => (
+          <a
+            class="carousel-card"
+            data-carousel-card
+            data-index={index}
+            href={`/productos/${product.slug}/`}
+            aria-label={`Ver ${product.title}`}
+          >
+            <div class="carousel-card-media">
+              {product.image ? (
+                <img src={product.image.url} alt={product.image.alt_text} loading="lazy" draggable="false" />
+              ) : (
+                <div class="carousel-placeholder">Foto próximamente</div>
+              )}
+            </div>
+            <span class="carousel-badge">{product.availability}</span>
+            <div class="carousel-info">
+              <p class="carousel-title">{product.title}</p>
+              <p class="carousel-price">{product.price}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <div class="carousel-controls">
+      <button type="button" class="carousel-nav" data-carousel-prev aria-label="Muñeco anterior">‹</button>
+      <div class="carousel-dots" data-carousel-dots>
+        {products.map((product, index) => (
+          <button
+            type="button"
+            class="carousel-dot"
+            data-carousel-dot
+            data-index={index}
+            aria-label={`Ir a ${product.title}`}
+          />
+        ))}
+      </div>
+      <button type="button" class="carousel-nav" data-carousel-next aria-label="Siguiente muñeco">›</button>
+    </div>
+  </div>
+)}
+
+<style>
+  .product-carousel {
+    --card-w: 200px;
+    padding-block: 8px 4px;
+  }
+  @media (min-width: 640px) {
+    .product-carousel { --card-w: 260px; }
+  }
+  @media (min-width: 1024px) {
+    .product-carousel { --card-w: 310px; }
+  }
+
+  .carousel-stage {
+    position: relative;
+    width: 100%;
+    height: calc(var(--card-w) * 4 / 3 + 150px);
+    overflow: visible;
+  }
+
+  .carousel-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+  }
+  .carousel-track:active { cursor: grabbing; }
+
+  .carousel-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--card-w);
+    height: calc(var(--card-w) * 4 / 3);
+    margin-top: calc(var(--card-w) * -2 / 3);
+    margin-left: calc(var(--card-w) / -2);
+    display: block;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background: #fff;
+    box-shadow: var(--shadow-clay);
+    will-change: transform;
+  }
+
+  .carousel-card-media {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #f8eee6;
+  }
+  .carousel-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .carousel-placeholder {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: .8rem;
+    text-align: center;
+  }
+
+  .carousel-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .95);
+    backdrop-filter: blur(6px);
+    color: var(--primary-dark);
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .carousel-info {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    color: var(--text);
+    text-shadow: 0 1px 12px rgba(255, 255, 255, .8);
+  }
+  .carousel-title {
+    margin: 0 0 2px;
+    font-family: "DM Serif Display", Georgia, serif;
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+    line-height: 1.15;
+  }
+  .carousel-price {
+    margin: 0;
+    color: #d26073;
+    font-size: .92rem;
+    font-weight: 800;
+  }
+
+  .carousel-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 18px;
+  }
+  .carousel-nav {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    color: var(--primary-dark);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out);
+  }
+  .carousel-nav:hover { transform: translateY(-2px); box-shadow: var(--shadow-clay); }
+  .carousel-dots { display: flex; align-items: center; gap: 8px; }
+  .carousel-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background .2s var(--ease-out), transform .2s var(--ease-out);
+  }
+  .carousel-dot.is-active {
+    background: var(--primary);
+    transform: scale(1.3);
+  }
+
+  @media (max-width: 420px) {
+    .carousel-controls { gap: 12px; }
+  }
+</style>
+
+<script>
+  function initProductCarousel(root: HTMLElement) {
+    const track = root.querySelector<HTMLElement>("[data-carousel-track]");
+    const cards = Array.from(root.querySelectorAll<HTMLAnchorElement>("[data-carousel-card]"));
+    const dots = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-carousel-dot]"));
+    const prevBtn = root.querySelector<HTMLButtonElement>("[data-carousel-prev]");
+    const nextBtn = root.querySelector<HTMLButtonElement>("[data-carousel-next]");
+    const total = cards.length;
+    if (!track || total === 0) return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let progress = 0;
+    let rafId = 0;
+    let dragging = false;
+    let dragStartProgress = 0;
+    let pointerMoved = 0;
+    let suppressClick = false;
+    let lastX = 0;
+    let lastT = 0;
+    let velocity = 0;
+
+    const getConfig = () => {
+      const width = window.innerWidth;
+      if (width < 640) return { sensitivity: 200, x: 78, y: 16, rotate: 7, scale: 0.08 };
+      if (width < 1024) return { sensitivity: 260, x: 112, y: 24, rotate: 9, scale: 0.1 };
+      return { sensitivity: 320, x: 140, y: 32, rotate: 11, scale: 0.12 };
+    };
+
+    const wrap = (diff: number) => {
+      let d = diff % total;
+      if (d > total / 2) d -= total;
+      if (d < -total / 2) d += total;
+      return d;
+    };
+
+    const render = () => {
+      const config = getConfig();
+      cards.forEach((card, index) => {
+        const diff = wrap(index - progress);
+        const abs = Math.abs(diff);
+        const x = diff * config.x;
+        const rotate = abs < 0.05 ? 0 : diff * config.rotate;
+        const y = abs < 0.05 ? 0 : abs * config.y;
+        const scale = Math.max(0.6, 1 - abs * config.scale);
+        const fadeStart = total / 2 - 0.6;
+        const opacity = abs > fadeStart ? Math.max(0, 1 - (abs - fadeStart) * 2.2) : 1;
+        card.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg) scale(${scale})`;
+        card.style.opacity = String(opacity);
+        card.style.zIndex = String(Math.round(30 - abs * 10));
+        card.style.pointerEvents = abs < fadeStart ? "auto" : "none";
+      });
+      const activeIndex = Math.round(((progress % total) + total) % total);
+      dots.forEach((dot, index) => dot.classList.toggle("is-active", index === activeIndex));
+    };
+
+    const settle = (target: number, animate = true) => {
+      cancelAnimationFrame(rafId);
+      if (!animate || reduceMotion) {
+        progress = target;
+        render();
+        return;
+      }
+      const start = progress;
+      const distance = target - start;
+      const duration = 380;
+      const startTime = performance.now();
+      const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - startTime) / duration);
+        progress = start + distance * ease(t);
+        render();
+        if (t < 1) rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const step = (delta: number) => settle(Math.round(progress) + delta);
+
+    prevBtn?.addEventListener("click", () => step(-1));
+    nextBtn?.addEventListener("click", () => step(1));
+    dots.forEach((dot) => {
+      dot.addEventListener("click", () => settle(Number(dot.dataset.index)));
+    });
+
+    let capturedPointerId: number | null = null;
+
+    track.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      pointerMoved = 0;
+      dragStartProgress = progress;
+      lastX = event.clientX;
+      lastT = performance.now();
+      velocity = 0;
+      cancelAnimationFrame(rafId);
+    });
+
+    track.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const config = getConfig();
+      const dx = event.clientX - lastX;
+      const now = performance.now();
+      const dt = Math.max(1, now - lastT);
+      velocity = dx / dt;
+      lastX = event.clientX;
+      lastT = now;
+      pointerMoved += Math.abs(dx);
+      // Capture only once real dragging is confirmed, so a plain click on a
+      // card's <a> keeps its native mouseup/click target and still navigates.
+      if (pointerMoved >= 6 && capturedPointerId === null) {
+        capturedPointerId = event.pointerId;
+        track.setPointerCapture(event.pointerId);
+      }
+      progress -= dx / config.sensitivity;
+      render();
+    });
+
+    const endDrag = (event: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      if (capturedPointerId !== null) {
+        track.releasePointerCapture(capturedPointerId);
+        capturedPointerId = null;
+      }
+      if (pointerMoved < 6) return;
+      suppressClick = true;
+      const config = getConfig();
+      const extra = (-velocity * 60) / config.sensitivity;
+      let target = Math.round(progress + extra);
+      const min = Math.round(dragStartProgress) - 3;
+      const max = Math.round(dragStartProgress) + 3;
+      target = Math.max(min, Math.min(max, target));
+      settle(target);
+    };
+
+    track.addEventListener("pointerup", endDrag);
+    track.addEventListener("pointercancel", endDrag);
+
+    track.addEventListener(
+      "click",
+      (event) => {
+        if (suppressClick) {
+          event.preventDefault();
+          suppressClick = false;
+        }
+      },
+      true,
+    );
+
+    root.setAttribute("tabindex", "0");
+    root.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") step(-1);
+      if (event.key === "ArrowRight") step(1);
+    });
+
+    window.addEventListener("resize", () => render());
+
+    render();
+  }
+
+  document
+    .querySelectorAll<HTMLElement>("[data-product-carousel]")
+    .forEach((root) => initProductCarousel(root));
+</script>
