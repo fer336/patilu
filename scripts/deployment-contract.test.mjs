@@ -146,7 +146,7 @@ assertIncludes("build job", buildJob, /file: \$\{\{ matrix\.dockerfile \}\}/);
 assertIncludes("build job", buildJob, /context: \$\{\{ matrix\.context \}\}/);
 assertIncludes("build job", buildJob, /image: patilu-api/);
 assertIncludes("build job", buildJob, /context: apps\/api/);
-assertIncludes("build job", buildJob, /dockerfile: Dockerfile/);
+assertIncludes("build job", buildJob, /dockerfile: apps\/api\/Dockerfile/);
 assertIncludes("build job", buildJob, /image: patilu-cms/);
 assertIncludes("build job", buildJob, /dockerfile: apps\/cms\/Dockerfile/);
 assertIncludes("build job", buildJob, /VITE_API_BASE_URL=https:\/\/patilulu\.com\/api/);
@@ -245,6 +245,7 @@ assertIncludes("tag-deploy job", tagDeploy, /context: \$\{\{ matrix\.context \}\
 assertIncludes("tag-deploy job", tagDeploy, /file: apps\/www\/Dockerfile/);
 assertIncludes("tag-deploy job", tagDeploy, /file: \$\{\{ matrix\.dockerfile \}\}/);
 assertIncludes("tag-deploy job", tagDeploy, /image: patilu-api/);
+assertIncludes("tag-deploy job", tagDeploy, /dockerfile: apps\/api\/Dockerfile/);
 assertIncludes("tag-deploy job", tagDeploy, /image: patilu-cms/);
 assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
 assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);
