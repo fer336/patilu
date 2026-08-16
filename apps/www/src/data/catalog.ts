@@ -1,4 +1,4 @@
-import { products as fallbackProducts, type Product as FallbackProduct } from "./products";
+import type { Product as FallbackProduct } from "./products";
 import type { CategorySlug } from "./categories";
 
 export const AVAILABILITY_LABELS = { available: "Disponible", made_to_order: "A pedido", reserved: "Reservado", sold_out: "Agotado" } as const;
@@ -14,6 +14,11 @@ function fallbackToCatalog(product: FallbackProduct): CatalogProduct {
   return { id: `fallback-${product.slug}`, slug: product.slug, title: product.name, description: product.description, measure: product.measure, price: null, currency: product.currency, availability: "made_to_order", category: product.category, trend: product.trend, images: product.gallery.map((url, position) => ({ id: `fallback-${product.slug}-${position}`, url, alt_text: position === 0 ? product.alt : `Detalle de ${product.name}`, position, is_primary: position === 0 })) };
 }
 
+async function getFallbackProducts(): Promise<CatalogProduct[]> {
+  const { products } = await import("./products");
+  return products.map(fallbackToCatalog);
+}
+
 export async function getPublishedProducts(): Promise<CatalogProduct[]> {
   try {
     const response = await fetch(`${apiBaseUrl}/products`, { headers: { Accept: "application/json" } });
@@ -22,7 +27,7 @@ export async function getPublishedProducts(): Promise<CatalogProduct[]> {
   } catch (error) {
     if (!allowFallback) throw error;
     console.warn("Catalog API unavailable; using local development fallback.", error);
-    return fallbackProducts.map(fallbackToCatalog);
+    return getFallbackProducts();
   }
 }
 
@@ -35,8 +40,8 @@ export async function getPublishedProduct(slug: string): Promise<CatalogProduct 
   } catch (error) {
     if (!allowFallback) throw error;
     console.warn("Catalog API unavailable; using local development fallback.", error);
-    const fallback = fallbackProducts.find((product) => product.slug === slug);
-    return fallback ? fallbackToCatalog(fallback) : null;
+    const fallback = await getFallbackProducts();
+    return fallback.find((product) => product.slug === slug) ?? null;
   }
 }
 
