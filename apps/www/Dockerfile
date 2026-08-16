@@ -1,11 +1,11 @@
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /workspace/patilu
 COPY apps/www/package.json ./package.json
 RUN npm install
 COPY apps/www/ ./
 RUN npm run build
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV HOST=0.0.0.0 PORT=8080 NODE_ENV=production
 WORKDIR /workspace/patilu
 COPY --from=build --chown=node:node /workspace/patilu/node_modules ./node_modules
