@@ -123,6 +123,7 @@ jobs:
             dockerfile: apps/cms/Dockerfile
             build_args: |
               VITE_API_BASE_URL=https://patilulu.com/api
+              VITE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
     steps:
       - name: Checkout release
         uses: actions/checkout@v5
@@ -344,6 +345,7 @@ jobs:
             dockerfile: apps/cms/Dockerfile
             build_args: |
               VITE_API_BASE_URL=https://patilulu.com/api
+              VITE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5

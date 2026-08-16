@@ -44,6 +44,8 @@ class Product(Base):
     measure: Mapped[str] = mapped_column(String(200))
     price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="ARS")
+    category: Mapped[str] = mapped_column(String(80), default="munecos", nullable=False)
+    trend: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     availability: Mapped[Availability] = mapped_column(String(32), default=Availability.MADE_TO_ORDER)
     status: Mapped[PublicationStatus] = mapped_column(String(32), default=PublicationStatus.DRAFT, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

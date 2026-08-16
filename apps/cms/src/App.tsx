@@ -1,7 +1,9 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { catalogApi } from "./api";
+import { authApi, catalogApi, getAdminSessionToken } from "./api";
 import {
   AVAILABILITY,
+  CATEGORY,
+  CATEGORY_LABELS,
   PUBLICATION_STATUS,
   type NewImage,
   type Product,
@@ -17,9 +19,30 @@ const EMPTY_PRODUCT: ProductInput = {
   measure: "",
   price: null,
   currency: "ARS",
+  category: CATEGORY.DOLLS,
+  trend: false,
   availability: AVAILABILITY.MADE_TO_ORDER,
   status: PUBLICATION_STATUS.DRAFT,
 };
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const GOOGLE_SCRIPT_ID = "google-identity-services";
+
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+
+interface GoogleAccountsId {
+  initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+  renderButton: (parent: HTMLElement, options: { theme: "outline"; size: "large"; text: "signin_with"; width: number }) => void;
+  disableAutoSelect: () => void;
+}
+
+declare global {
+  interface Window {
+    google?: { accounts?: { id?: GoogleAccountsId } };
+  }
+}
 
 const AVAILABILITY_LABELS = {
   [AVAILABILITY.AVAILABLE]: "Disponible",
@@ -43,6 +66,8 @@ function productToInput(product: Product): ProductInput {
     measure: product.measure,
     price: product.price,
     currency: product.currency,
+    category: product.category,
+    trend: product.trend,
     availability: product.availability,
     status: product.status,
   };
@@ -55,6 +80,8 @@ export function App() {
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
   const [newImages, setNewImages] = useState<NewImage[]>([]);
   const [primarySelection, setPrimarySelection] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(() => Boolean(getAdminSessionToken()));
+  const [adminEmail, setAdminEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -78,8 +105,73 @@ export function App() {
   }
 
   useEffect(() => {
-    void loadProducts();
-  }, []);
+    if (authenticated) {
+      void loadProducts();
+      return;
+    }
+    setLoading(false);
+  }, [authenticated]);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || authenticated) return;
+    const button = document.getElementById("google-signin-button");
+    if (!button) return;
+    const buttonTarget = button;
+
+    function initializeGoogleButton() {
+      window.google?.accounts?.id?.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response) => {
+          if (!response.credential) {
+            setError("Google no devolvió una credencial válida.");
+            return;
+          }
+          void signInWithGoogle(response.credential);
+        },
+      });
+      window.google?.accounts?.id?.renderButton(buttonTarget, { theme: "outline", size: "large", text: "signin_with", width: 280 });
+    }
+
+    if (window.google?.accounts?.id) {
+      initializeGoogleButton();
+      return;
+    }
+
+    let script = document.getElementById(GOOGLE_SCRIPT_ID) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = GOOGLE_SCRIPT_ID;
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    script.addEventListener("load", initializeGoogleButton);
+    return () => script?.removeEventListener("load", initializeGoogleButton);
+  }, [authenticated]);
+
+  async function signInWithGoogle(credential: string) {
+    setLoading(true);
+    setError("");
+    try {
+      const session = await authApi.signInWithGoogle(credential);
+      setAdminEmail(session.email);
+      setAuthenticated(true);
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : "No se pudo iniciar sesión con Google.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function signOut() {
+    authApi.signOut();
+    window.google?.accounts?.id?.disableAutoSelect();
+    setAuthenticated(false);
+    setAdminEmail("");
+    setProducts([]);
+    startNewProduct();
+  }
 
   function clearNewImages() {
     newImages.forEach((image) => URL.revokeObjectURL(image.previewUrl));
@@ -224,6 +316,32 @@ export function App() {
     }
   }
 
+  if (!GOOGLE_CLIENT_ID) {
+    return (
+      <main className="cms-shell auth-shell">
+        <section className="auth-card">
+          <span className="maker-mark" aria-hidden="true">P</span>
+          <h1>Patilu CMS</h1>
+          <p>Configurá <code>VITE_GOOGLE_CLIENT_ID</code> en el build del CMS para habilitar el acceso con Google.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <main className="cms-shell auth-shell">
+        <section className="auth-card">
+          <span className="maker-mark" aria-hidden="true">P</span>
+          <h1>Patilu CMS</h1>
+          <p>Ingresá con una cuenta de Google autorizada para administrar el catálogo.</p>
+          {error && <p className="alert alert-error" role="alert">{error}</p>}
+          <div id="google-signin-button" className="google-signin-button" />
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="cms-shell">
       <header className="cms-header">
@@ -231,7 +349,7 @@ export function App() {
           <span className="maker-mark" aria-hidden="true">P</span>
           <div><p>Administración de catálogo</p><h1>Patilu CMS</h1></div>
         </div>
-        <p className="security-note">Acceso administrativo protegido con token de sesión.</p>
+        <div className="session-actions"><p className="security-note">Acceso con Google{adminEmail ? `: ${adminEmail}` : ""}</p><button type="button" onClick={signOut}>Cerrar sesión</button></div>
       </header>
 
       <div className="workspace">
@@ -266,6 +384,8 @@ export function App() {
                 <label className="wide"><span>Descripción</span><textarea required rows={4} value={form.description} onChange={(event) => updateField("description", event.target.value)} /></label>
                 <label><span>Precio</span><input type="number" min="0" step="0.01" value={form.price ?? ""} onChange={(event) => updateField("price", event.target.value || null)} placeholder="Opcional" /></label>
                 <label><span>Moneda</span><select value={form.currency} onChange={(event) => updateField("currency", event.target.value)}><option value="ARS">ARS</option></select></label>
+                <label><span>Categoría</span><select value={form.category} onChange={(event) => updateField("category", event.target.value as ProductInput["category"])}>{Object.entries(CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label className="checkbox-label"><input type="checkbox" checked={form.trend} onChange={(event) => updateField("trend", event.target.checked)} /> Marcar como tendencia</label>
                 <label><span>Disponibilidad</span><select value={form.availability} onChange={(event) => updateField("availability", event.target.value as ProductInput["availability"])}>{Object.entries(AVAILABILITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 <label><span>Publicación</span><select value={form.status} onChange={(event) => updateField("status", event.target.value as ProductInput["status"])}>{Object.entries(STATUS_LABELS).filter(([value]) => value !== PUBLICATION_STATUS.DELETED).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>

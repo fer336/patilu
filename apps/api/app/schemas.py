@@ -14,6 +14,8 @@ class ProductBase(BaseModel):
     measure: str = Field(min_length=1, max_length=200)
     price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
     currency: str = Field(default="ARS", min_length=3, max_length=3)
+    category: str = Field(default="munecos", pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=80)
+    trend: bool = False
     availability: Availability = Availability.MADE_TO_ORDER
     status: PublicationStatus = PublicationStatus.DRAFT
 
@@ -34,8 +36,21 @@ class ProductUpdate(BaseModel):
     measure: str | None = Field(default=None, min_length=1, max_length=200)
     price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
+    category: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=80)
+    trend: bool | None = None
     availability: Availability | None = None
     status: PublicationStatus | None = None
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(min_length=1)
+
+
+class AdminSessionRead(BaseModel):
+    token: str
+    token_type: str = "bearer"
+    expires_in: int
+    email: str
 
 
 class ProductImageRead(BaseModel):

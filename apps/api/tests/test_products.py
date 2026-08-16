@@ -21,6 +21,8 @@ def product_payload(**overrides: object) -> dict[str, object]:
         "measure": "Aproximadamente 28 cm de alto",
         "price": "24500.00",
         "currency": "ARS",
+        "category": "munecos",
+        "trend": True,
         "availability": "available",
         "status": "draft",
     }
@@ -32,6 +34,40 @@ def test_product_schema_normalizes_currency() -> None:
     product = ProductCreate.model_validate(product_payload(currency="ars"))
     assert product.currency == "ARS"
     assert str(product.price) == "24500.00"
+    assert product.category == "munecos"
+    assert product.trend is True
+
+
+def test_google_auth_mints_admin_session_token(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_verify_google_id_token(credential: str, audience: str) -> dict[str, object]:
+        assert credential == "google-id-token"
+        assert audience == "cms-client-id.apps.googleusercontent.com"
+        return {"email": "Admin@Example.com", "email_verified": True, "sub": "google-subject"}
+
+    monkeypatch.setattr("app.routes.verify_google_id_token", fake_verify_google_id_token)
+
+    auth = client.post("/admin/auth/google", json={"credential": "google-id-token"})
+    assert auth.status_code == 200
+    token = auth.json()["token"]
+    assert token != "test-admin-token"
+    assert auth.json()["email"] == "admin@example.com"
+
+    created = client.post("/admin/products", json=product_payload(), headers={"Authorization": f"Bearer {token}"})
+    assert created.status_code == 201
+
+
+def test_google_auth_rejects_unverified_or_unlisted_email(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.routes.verify_google_id_token",
+        lambda credential, audience: {"email": "admin@example.com", "email_verified": False, "sub": "subject"},
+    )
+    assert client.post("/admin/auth/google", json={"credential": "google-id-token"}).status_code == 401
+
+    monkeypatch.setattr(
+        "app.routes.verify_google_id_token",
+        lambda credential, audience: {"email": "other@example.com", "email_verified": True, "sub": "subject"},
+    )
+    assert client.post("/admin/auth/google", json={"credential": "google-id-token"}).status_code == 403
 
 
 def test_admin_crud_and_public_visibility(client: TestClient, image_bytes: bytes) -> None:
@@ -51,7 +87,10 @@ def test_admin_crud_and_public_visibility(client: TestClient, image_bytes: bytes
 
     published = client.patch(f"/admin/products/{product_id}", json={"status": "published"}, headers=ADMIN_HEADERS)
     assert published.status_code == 200
-    assert client.get("/products").json()[0]["slug"] == "oveja-crochet"
+    public_product = client.get("/products").json()[0]
+    assert public_product["slug"] == "oveja-crochet"
+    assert public_product["category"] == "munecos"
+    assert public_product["trend"] is True
     assert client.get("/products/oveja-crochet").status_code == 200
 
     updated = client.patch(f"/admin/products/{product_id}", json={"measure": "30 cm de alto"}, headers=ADMIN_HEADERS)

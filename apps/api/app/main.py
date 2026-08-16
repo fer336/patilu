@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routes import admin_router, public_router
+from app.routes import admin_auth_router, admin_router, public_router
 
 settings = get_settings()
 app = FastAPI(title="Patilu API", version="0.1.0")
@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(public_router)
+app.include_router(admin_auth_router)
 app.include_router(admin_router)
 
 
