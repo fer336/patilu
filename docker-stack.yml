@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   patilu:
-    image: ghcr.io/fer336/patilu:v0.1.20
+    image: ghcr.io/fer336/patilu:v0.1.21
     networks:
       - network_public
     healthcheck:
@@ -43,7 +43,7 @@ services:
         - traefik.http.services.patilu.loadbalancer.server.port=8080
 
   patilu-api:
-    image: ghcr.io/fer336/patilu-api:v0.1.20
+    image: ghcr.io/fer336/patilu-api:v0.1.21
     networks:
       - network_public
     secrets:
@@ -71,7 +71,7 @@ services:
         - traefik.http.services.patilu-api.loadbalancer.server.port=8000
 
   patilu-cms:
-    image: ghcr.io/fer336/patilu-cms:v0.1.20
+    image: ghcr.io/fer336/patilu-cms:v0.1.21
     networks:
       - network_public
     healthcheck:
