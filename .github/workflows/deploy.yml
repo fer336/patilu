@@ -116,7 +116,7 @@ jobs:
             build_args: ""
           - image: patilu-api
             context: apps/api
-            dockerfile: Dockerfile
+            dockerfile: apps/api/Dockerfile
             build_args: ""
           - image: patilu-cms
             context: .
@@ -337,7 +337,7 @@ jobs:
             build_args: ""
           - image: patilu-api
             context: apps/api
-            dockerfile: Dockerfile
+            dockerfile: apps/api/Dockerfile
             build_args: ""
           - image: patilu-cms
             context: .
