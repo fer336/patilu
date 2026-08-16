@@ -89,7 +89,7 @@ assertNotIncludes("docker-stack.yml", stack, /postgres_data/);
 assertNotIncludes("docker-stack.yml", stack, /patilu_postgres_password/);
 assertIncludes("docker-stack.yml", stack, /patilu_backend_env:/);
 assertIncludes("docker-stack.yml", stack, /target: backend\.env/);
-assertNotIncludes("docker-stack.yml", stack, /API_INTERNAL_URL/);
+assertIncludes("docker-stack.yml", stack, /API_INTERNAL_URL: http:\/\/patilu-api:8000/);
 assertNotIncludes("docker-stack.yml", stack, /CORS_ORIGINS/);
 assertNotIncludes("docker-stack.yml", stack, /MEDIA_PUBLIC_URL/);
 assertIncludes("docker-stack.yml", stack, /stripprefix\.prefixes=\/api/);
