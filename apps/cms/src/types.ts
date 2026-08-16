@@ -12,8 +12,19 @@ export const PUBLICATION_STATUS = {
   DELETED: "deleted",
 } as const;
 
+export const CATEGORY = {
+  DOLLS: "munecos",
+  HOME: "hogar",
+} as const;
+
+export const CATEGORY_LABELS = {
+  [CATEGORY.DOLLS]: "Muñecos",
+  [CATEGORY.HOME]: "Hogar",
+} as const;
+
 export type Availability = (typeof AVAILABILITY)[keyof typeof AVAILABILITY];
 export type PublicationStatus = (typeof PUBLICATION_STATUS)[keyof typeof PUBLICATION_STATUS];
+export type Category = (typeof CATEGORY)[keyof typeof CATEGORY];
 
 export interface ProductImage {
   id: string;
@@ -34,6 +45,8 @@ export interface Product {
   measure: string;
   price: string | null;
   currency: string;
+  category: Category;
+  trend: boolean;
   availability: Availability;
   status: PublicationStatus;
   images: ProductImage[];
@@ -48,6 +61,8 @@ export interface ProductInput {
   measure: string;
   price: string | null;
   currency: string;
+  category: Category;
+  trend: boolean;
   availability: Availability;
   status: PublicationStatus;
 }

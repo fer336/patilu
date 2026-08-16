@@ -150,6 +150,7 @@ assertIncludes("build job", buildJob, /dockerfile: apps\/api\/Dockerfile/);
 assertIncludes("build job", buildJob, /image: patilu-cms/);
 assertIncludes("build job", buildJob, /dockerfile: apps\/cms\/Dockerfile/);
 assertIncludes("build job", buildJob, /VITE_API_BASE_URL=https:\/\/patilulu\.com\/api/);
+assertIncludes("build job", buildJob, /VITE_GOOGLE_CLIENT_ID=\$\{\{ matrix\.image == 'patilu-cms' && secrets\.GOOGLE_CLIENT_ID \|\| '' \}\}/);
 
 const validation = jobSection(workflow, "release-validation", "build");
 assertIncludes("release-validation job", validation, /\^v\(0\|\[1-9\]\[0-9\]\*\)/);

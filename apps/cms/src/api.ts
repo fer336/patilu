@@ -1,16 +1,27 @@
 import type { Product, ProductImage, ProductInput } from "./types";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
-const ADMIN_TOKEN_KEY = "patilu_admin_token";
+const ADMIN_SESSION_KEY = "patilu_admin_session";
+
+interface AdminSessionResponse {
+  token: string;
+  token_type: "bearer";
+  expires_in: number;
+  email: string;
+}
+
+export function getAdminSessionToken(): string | null {
+  return sessionStorage.getItem(ADMIN_SESSION_KEY);
+}
+
+export function clearAdminSession(): void {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}
 
 function adminHeaders(path: string): HeadersInit {
   if (!path.startsWith("/admin/products")) return {};
-  let token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
-  if (!token) {
-    token = window.prompt("Ingresá el token administrativo de Patilu")?.trim() || null;
-    if (token) sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-  }
-  if (!token) throw new Error("Se necesita el token administrativo para acceder al catálogo.");
+  const token = getAdminSessionToken();
+  if (!token) throw new Error("Iniciá sesión con Google para administrar el catálogo.");
   return { Authorization: `Bearer ${token}` };
 }
 
@@ -50,4 +61,16 @@ export const catalogApi = {
     if (primaryIndex !== null) body.append("primary_index", String(primaryIndex));
     return request<Product>(`/admin/products/${productId}/images`, { method: "POST", body });
   },
+};
+
+export const authApi = {
+  signInWithGoogle: async (credential: string): Promise<AdminSessionResponse> => {
+    const session = await request<AdminSessionResponse>("/admin/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    });
+    sessionStorage.setItem(ADMIN_SESSION_KEY, session.token);
+    return session;
+  },
+  signOut: clearAdminSession,
 };

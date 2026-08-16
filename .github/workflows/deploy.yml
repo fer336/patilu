@@ -144,7 +144,9 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:sha-${{ github.sha }}
-          build-args: ${{ matrix.build_args }}
+          build-args: |
+            ${{ matrix.build_args }}
+            VITE_GOOGLE_CLIENT_ID=${{ matrix.image == 'patilu-cms' && secrets.GOOGLE_CLIENT_ID || '' }}
 
   promote:
     name: Promote release image
@@ -368,4 +370,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:${{ github.ref_name }}
-          build-args: ${{ matrix.build_args }}
+          build-args: |
+            ${{ matrix.build_args }}
+            VITE_GOOGLE_CLIENT_ID=${{ matrix.image == 'patilu-cms' && secrets.GOOGLE_CLIENT_ID || '' }}

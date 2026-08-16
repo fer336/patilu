@@ -54,6 +54,9 @@ def service(session: Session, storage: FakeStorage) -> ProductService:
 @pytest.fixture
 def client(service: ProductService, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
     monkeypatch.setenv("API_ADMIN_TOKEN", "test-admin-token")
+    monkeypatch.setenv("API_ADMIN_SESSION_SECRET", "test-session-secret")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "cms-client-id.apps.googleusercontent.com")
+    monkeypatch.setenv("ADMIN_ALLOWED_EMAILS", "admin@example.com")
     get_settings.cache_clear()
     app.dependency_overrides[get_product_service] = lambda: service
     with TestClient(app) as test_client:

@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.16,<2",
     "fastapi[standard]>=0.116,<1.0",
+    "google-auth[requests]>=2.41,<3",
     "minio>=7.2,<8",
     "pillow>=11.3,<12",
     "psycopg[binary]>=3.2,<4",
