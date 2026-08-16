@@ -46,13 +46,13 @@ jobs:
         run: node scripts/validate-stack-deploy.test.mjs
 
       - name: Test public site
-        run: npm --workspace patilu test
+        run: npm --workspace apps/www test
 
       - name: Typecheck public site
-        run: npm --workspace patilu run typecheck
+        run: npm --workspace apps/www run typecheck
 
       - name: Build public site
-        run: npm --workspace patilu run build
+        run: npm --workspace apps/www run build
 
   release-validation:
     name: Validate production release
@@ -99,13 +99,30 @@ jobs:
           echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build and publish image
+    name: Build and publish images
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     needs: [checks, release-validation]
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: patilu
+            context: .
+            dockerfile: apps/www/Dockerfile
+            build_args: ""
+          - image: patilu-api
+            context: apps/api
+            dockerfile: apps/api/Dockerfile
+            build_args: ""
+          - image: patilu-cms
+            context: .
+            dockerfile: apps/cms/Dockerfile
+            build_args: |
+              VITE_API_BASE_URL=https://patilulu.com/api
     steps:
       - name: Checkout release
         uses: actions/checkout@v5
@@ -122,11 +139,12 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: patilu/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu:sha-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:sha-${{ github.sha }}
+          build-args: ${{ matrix.build_args }}
 
   promote:
     name: Promote release image
@@ -148,9 +166,11 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          source="${REGISTRY}/${IMAGE_OWNER}/patilu:sha-${{ github.sha }}"
-          docker buildx imagetools inspect "$source"
-          docker buildx imagetools create --tag "${REGISTRY}/${IMAGE_OWNER}/patilu:${RELEASE_TAG}" "$source"
+          for image in patilu patilu-api patilu-cms; do
+            source="${REGISTRY}/${IMAGE_OWNER}/${image}:sha-${{ github.sha }}"
+            docker buildx imagetools inspect "$source"
+            docker buildx imagetools create --tag "${REGISTRY}/${IMAGE_OWNER}/${image}:${RELEASE_TAG}" "$source"
+          done
 
   update-stack:
     name: Open stack pin PR
@@ -273,12 +293,16 @@ jobs:
       - name: Validate release provenance and promoted image
         if: steps.stack-pin.outputs.deploy_stack == 'true'
         run: |
-          image_reference="${REGISTRY}/${IMAGE_OWNER}/patilu:${{ steps.stack-pin.outputs.stack_tag }}"
-          docker buildx imagetools inspect "$image_reference"
+          image_references=""
+          for image in patilu patilu-api patilu-cms; do
+            image_reference="${REGISTRY}/${IMAGE_OWNER}/${image}:${{ steps.stack-pin.outputs.stack_tag }}"
+            docker buildx imagetools inspect "$image_reference"
+            image_references="${image_references}${image_references:+,}${image_reference}"
+          done
           node scripts/validate-stack-deploy.mjs \
             --tag "${{ steps.stack-pin.outputs.stack_tag }}" \
             --release-metadata "$RUNNER_TEMP/release.json" \
-            --image-reference "$image_reference"
+            --image-reference "$image_references"
 
       - name: Invoke Portainer webhook
         if: steps.stack-pin.outputs.deploy_stack == 'true'
@@ -297,12 +321,29 @@ jobs:
             --url "$PORTAINER_WEBHOOK"
 
   tag-deploy:
-    name: Build image from tag push
+    name: Build images from tag push
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: patilu
+            context: .
+            dockerfile: apps/www/Dockerfile
+            build_args: ""
+          - image: patilu-api
+            context: apps/api
+            dockerfile: apps/api/Dockerfile
+            build_args: ""
+          - image: patilu-cms
+            context: .
+            dockerfile: apps/cms/Dockerfile
+            build_args: |
+              VITE_API_BASE_URL=https://patilulu.com/api
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -322,8 +363,9 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: patilu/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/patilu:${{ github.ref_name }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:${{ github.ref_name }}
+          build-args: ${{ matrix.build_args }}

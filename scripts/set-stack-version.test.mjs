@@ -6,6 +6,10 @@ import { setStackVersion, validateReleaseLineage } from "./set-stack-version.mjs
 const stack = `services:
   patilu:
     image: ghcr.io/fer336/patilu:production
+  patilu-api:
+    image: ghcr.io/fer336/patilu-api:production
+  patilu-cms:
+    image: ghcr.io/fer336/patilu-cms:production
     environment: unchanged
 networks:
   network_public:
@@ -17,14 +21,17 @@ for (const invalid of ["1.2.3", "v1.2", "v1.2.3-rc.1", "v01.2.3", "latest", "pro
 }
 
 const updated = setStackVersion(stack, "v1.2.3");
-assert.equal((updated.match(/:v1\.2\.3/g) ?? []).length, 1);
+assert.equal((updated.match(/:v1\.2\.3/g) ?? []).length, 3);
 assert.doesNotMatch(updated, /:(?:latest|production)\b/);
 assert.match(updated, /environment: unchanged/);
 assert.equal(setStackVersion(updated, "v1.2.3"), updated);
-assert.equal(setStackVersion(updated, "v2.0.0").match(/:v2\.0\.0/g)?.length, 1);
+assert.equal(setStackVersion(updated, "v2.0.0").match(/:v2\.0\.0/g)?.length, 3);
 
 const stableCurrent = stack.replace("patilu:production", "patilu:v1.0.0");
-assert.equal(setStackVersion(stableCurrent, "v1.0.1").match(/:v1\.0\.1/g)?.length, 1);
+assert.throws(() => setStackVersion(stableCurrent, "v1.0.1"), /coherent/);
+
+const allStableCurrent = stack.replaceAll(":production", ":v1.0.0");
+assert.equal(setStackVersion(allStableCurrent, "v1.0.1").match(/:v1\.0\.1/g)?.length, 3);
 
 const mutable = stack.replaceAll(":production", ":latest");
 assert.throws(() => setStackVersion(mutable, "v1.0.0"), /bootstrap production or stable SemVer/);

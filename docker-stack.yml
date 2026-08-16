@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   patilu:
-    image: ghcr.io/fer336/patilu:v0.1.11
+    image: ghcr.io/fer336/patilu:v0.1.14
     networks:
       - network_public
     healthcheck:
@@ -41,6 +41,60 @@ services:
         - traefik.http.middlewares.patilu-www-redirect.redirectregex.replacement=https://patilulu.com/$${1}
         - traefik.http.middlewares.patilu-www-redirect.redirectregex.permanent=true
         - traefik.http.services.patilu.loadbalancer.server.port=8080
+
+  patilu-api:
+    image: ghcr.io/fer336/patilu-api:v0.1.14
+    networks:
+      - network_public
+    secrets:
+      - source: patilu_backend_env
+        target: backend.env
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config: *update_config
+      rollback_config: *rollback_config
+      restart_policy: *restart_policy
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_public
+        - traefik.http.routers.patilu-api.rule=Host(`patilulu.com`) && PathPrefix(`/api`)
+        - traefik.http.routers.patilu-api.entrypoints=websecure
+        - traefik.http.routers.patilu-api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.patilu-api.priority=100
+        - traefik.http.routers.patilu-api.middlewares=patilu-api-strip-prefix
+        - traefik.http.middlewares.patilu-api-strip-prefix.stripprefix.prefixes=/api
+        - traefik.http.services.patilu-api.loadbalancer.server.port=8000
+
+  patilu-cms:
+    image: ghcr.io/fer336/patilu-cms:v0.1.14
+    networks:
+      - network_public
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config: *update_config
+      rollback_config: *rollback_config
+      restart_policy: *restart_policy
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_public
+        - traefik.http.routers.patilu-cms.rule=Host(`cms-patilulu.com`)
+        - traefik.http.routers.patilu-cms.entrypoints=websecure
+        - traefik.http.routers.patilu-cms.tls.certresolver=letsencryptresolver
+        - traefik.http.services.patilu-cms.loadbalancer.server.port=8080
+
+secrets:
+  patilu_backend_env:
+    external: true
 
 networks:
   network_public:

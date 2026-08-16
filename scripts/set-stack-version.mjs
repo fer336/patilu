@@ -3,8 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 export const STABLE_SEMVER = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const IMAGE_PREFIX = "ghcr.io/fer336/";
 export const PATILU_IMAGE_REPOSITORY = `${IMAGE_PREFIX}patilu`;
-const EXPECTED_IMAGES = ["patilu"];
-const PATILU_IMAGE = /ghcr\.io\/fer336\/(patilu):([^\s"']+)/g;
+export const EXPECTED_IMAGES = ["patilu", "patilu-api", "patilu-cms"];
+export const PATILU_IMAGE_REPOSITORIES = EXPECTED_IMAGES.map((image) => `${IMAGE_PREFIX}${image}`);
+const PATILU_IMAGE = /ghcr\.io\/fer336\/(patilu(?:-api|-cms)?):([^\s"']+)/g;
 export function setStackVersion(stack, requestedTag) {
   if (!STABLE_SEMVER.test(requestedTag)) {
     throw new Error("Version must be stable SemVer in vMAJOR.MINOR.PATCH format.");

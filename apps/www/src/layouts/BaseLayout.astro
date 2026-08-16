@@ -1,5 +1,6 @@
 ---
 import PurchaseModal from "../components/PurchaseModal.astro";
+import { whatsappNumber } from "../data/products";
 
 interface Props {
   title: string;
@@ -69,6 +70,7 @@ const footerLinks = [
 ];
 
 const isActive = (href: string) => activePath === href || (href !== "/" && activePath.startsWith(`${href}/`));
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hola Patilu, quiero consultar por un muñeco tejido.")}`;
 ---
 <!doctype html>
 <html lang="es-AR">
@@ -123,7 +125,7 @@ const isActive = (href: string) => activePath === href || (href !== "/" && activ
         <small class="footer-note">♡ Hecho a mano en Pinamar, Argentina.</small>
       </div>
     </footer>
-    <a class="floating-whatsapp" href="/contacto" aria-label="Ver datos de contacto de Patilu"><span>◉</span></a>
+    <a class="floating-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="Consultar a Patilu por WhatsApp"><span>◉</span></a>
     <PurchaseModal />
 
     <script is:inline>

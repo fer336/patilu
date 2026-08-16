@@ -16,3 +16,8 @@ patilu-brief-web-astro-seo-geo (1).md
 patilu-especificacion-reestructurada.md
 .impeccable/
 excalidraw.log
+
+# BEGIN oh-my-opencode-slim worktrees
+.slim/worktrees/
+.slim/worktrees.json
+# END oh-my-opencode-slim worktrees

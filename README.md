@@ -5,14 +5,16 @@ Patilu runs a production-oriented managed catalog: the Astro site renders publis
 ## Quick path
 
 1. Fill `.env` from `.env.example` with operator-owned values; never commit the resulting file.
-2. Run `npm --workspace patilu test` to verify the site contract.
+2. Run `npm --workspace apps/www test` to verify the site contract.
 4. Deploy `docker-stack.yml` from Portainer.
 
 ## Application
 
 | App | Path | Responsibility in this slice |
 |---|---|---|
-| Public site | `patilu/` | Astro SSR catalog and runtime product detail routes. |
+| Public site | `apps/www/` | Astro SSR catalog and runtime product detail routes. |
+| API | `apps/api/` | FastAPI managed product catalog boundary. |
+| CMS | `apps/cms/` | React admin UI for catalog management. |
 
 ## Out of scope
 
@@ -55,7 +57,7 @@ Astro runs with the Node standalone adapter and reads `API_INTERNAL_URL` at runt
 
 Every `/admin/products` request requires the `API_ADMIN_TOKEN` bearer token. The token is never bundled into the frontend build. Infrastructure access controls remain recommended because CORS is not an authentication boundary.
 
-To import the current fallback products and image assets into an empty catalog, run from the repo root: `uv run python -m app.seed --assets-dir patilu/public/assets`. The import is idempotent by slug and requires reachable PostgreSQL and MinIO services.
+To import the current fallback products and image assets into an empty catalog, run from `apps/api`: `uv run python -m app.seed --assets-dir ../www/public/assets`. The import is idempotent by slug and requires reachable PostgreSQL and MinIO services.
 
 The repository remains on the bootstrap `production` image tag only until the first release workflow updates `docker-stack.yml`. After that migration, the service stays pinned to the same immutable release version; the workflow never creates or deploys `latest` or mutable `production` tags.
 

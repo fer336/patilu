@@ -45,23 +45,23 @@ for (const pattern of [
 }
 assertNotIncludes(".dockerignore", dockerignore, /package-lock\.json/);
 
-const dockerfile = read("patilu/Dockerfile");
-assertIncludes("patilu/Dockerfile", dockerfile, /FROM node:.* AS build/);
-assertIncludes("patilu/Dockerfile", dockerfile, /WORKDIR \/workspace\/patilu/);
-assertIncludes("patilu/Dockerfile", dockerfile, /COPY patilu\/package\.json \.\/package\.json/);
-assertIncludes("patilu/Dockerfile", dockerfile, /npm install/);
-assertIncludes("patilu/Dockerfile", dockerfile, /COPY patilu\/ \.\//);
-assertIncludes("patilu/Dockerfile", dockerfile, /npm run build/);
-assertIncludes("patilu/Dockerfile", dockerfile, /FROM node:.* AS runtime/);
-assertIncludes("patilu/Dockerfile", dockerfile, /EXPOSE 8080/);
-assertIncludes("patilu/Dockerfile", dockerfile, /USER node/);
-assertIncludes("patilu/Dockerfile", dockerfile, /node:net/);
-assertIncludes("patilu/Dockerfile", dockerfile, /port:8080/);
-assertIncludes("patilu/Dockerfile", dockerfile, /WORKDIR \/workspace\/patilu/);
-assertIncludes("patilu/Dockerfile", dockerfile, /\/workspace\/patilu\/node_modules/);
-assertIncludes("patilu/Dockerfile", dockerfile, /\/workspace\/patilu\/dist/);
-assertNotIncludes("patilu/Dockerfile", dockerfile, /127\.0\.0\.1:8080\//);
-assertNotIncludes("patilu/Dockerfile", dockerfile, /fetch\(|\/healthz/);
+const dockerfile = read("apps/www/Dockerfile");
+assertIncludes("apps/www/Dockerfile", dockerfile, /FROM node:.* AS build/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /WORKDIR \/workspace\/patilu/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /COPY apps\/www\/package\.json \.\/package\.json/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /npm install/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /COPY apps\/www\/ \.\//);
+assertIncludes("apps/www/Dockerfile", dockerfile, /npm run build/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /FROM node:.* AS runtime/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /EXPOSE 8080/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /USER node/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /node:net/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /port:8080/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /WORKDIR \/workspace\/patilu/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /\/workspace\/patilu\/node_modules/);
+assertIncludes("apps/www/Dockerfile", dockerfile, /\/workspace\/patilu\/dist/);
+assertNotIncludes("apps/www/Dockerfile", dockerfile, /127\.0\.0\.1:8080\//);
+assertNotIncludes("apps/www/Dockerfile", dockerfile, /fetch\(|\/healthz/);
 
 const stackDeployValidator = read("scripts/validate-stack-deploy.mjs");
 assertIncludes("scripts/validate-stack-deploy.mjs", stackDeployValidator, /setStackVersion/);
@@ -72,38 +72,46 @@ assertIncludes("scripts/validate-stack-deploy.mjs", stackDeployValidator, /valid
 const stack = read("docker-stack.yml");
 assertIncludes("docker-stack.yml", stack, /patilu:/);
 assertNotIncludes("docker-stack.yml", stack, /patilu-web:/);
-assertNotIncludes("docker-stack.yml", stack, /patilu-cms:/);
-assertNotIncludes("docker-stack.yml", stack, /patilu-api:/);
+assertIncludes("docker-stack.yml", stack, /patilu-cms:/);
+assertIncludes("docker-stack.yml", stack, /patilu-api:/);
 assertNotIncludes("docker-stack.yml", stack, /^ {2}postgres:/m);
-const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/patilu:(\S+)/g)];
-assert.equal(stackImages.length, 1, "docker-stack.yml must contain exactly one Patilu image");
-assert.match(stackImages[0][1], /^(?:production|v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/);
+const stackImages = [...stack.matchAll(/ghcr\.io\/fer336\/(patilu(?:-api|-cms)?):(\S+)/g)];
+assert.equal(stackImages.length, 3, "docker-stack.yml must contain exactly three Patilu images");
+assert.deepEqual(stackImages.map((match) => match[1]).sort(), ["patilu", "patilu-api", "patilu-cms"]);
+const stackTags = new Set(stackImages.map((match) => match[2]));
+assert.equal(stackTags.size, 1, "docker-stack.yml Patilu images must use one coherent tag");
+assert.match([...stackTags][0], /^(?:production|v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/);
 assertNotIncludes("docker-stack.yml", stack, /ghcr\.io\/fer336\/patilu:latest/);
 assertIncludes("docker-stack.yml", stack, /external: true/);
 assertIncludes("docker-stack.yml", stack, /network_public/);
 assertNotIncludes("docker-stack.yml", stack, /network_internal/);
 assertNotIncludes("docker-stack.yml", stack, /postgres_data/);
 assertNotIncludes("docker-stack.yml", stack, /patilu_postgres_password/);
-assertNotIncludes("docker-stack.yml", stack, /patilu_backend_env/);
+assertIncludes("docker-stack.yml", stack, /patilu_backend_env:/);
+assertIncludes("docker-stack.yml", stack, /target: backend\.env/);
 assertNotIncludes("docker-stack.yml", stack, /API_INTERNAL_URL/);
 assertNotIncludes("docker-stack.yml", stack, /CORS_ORIGINS/);
 assertNotIncludes("docker-stack.yml", stack, /MEDIA_PUBLIC_URL/);
-assertNotIncludes("docker-stack.yml", stack, /stripprefix/);
-assertNotIncludes("docker-stack.yml", stack, /PathPrefix/);
-assertNotIncludes("docker-stack.yml", stack, /priority=100/);
+assertIncludes("docker-stack.yml", stack, /stripprefix\.prefixes=\/api/);
+assertIncludes("docker-stack.yml", stack, /PathPrefix\(`\/api`\)/);
+assertIncludes("docker-stack.yml", stack, /priority=100/);
 assertNotIncludes("docker-stack.yml", stack, /cms-patilu\.qeva\.xyz/);
 assertNotIncludes("docker-stack.yml", stack, /patilu\.qeva\.xyz/);
 assertIncludes("docker-stack.yml", stack, /Host\(`patilulu\.com`\)/);
+assertIncludes("docker-stack.yml", stack, /Host\(`patilulu\.com`\) && PathPrefix\(`\/api`\)/);
+assertIncludes("docker-stack.yml", stack, /Host\(`cms-patilulu\.com`\)/);
 assertIncludes("docker-stack.yml", stack, /Host\(`www\.patilulu\.com`\)/);
 assertIncludes("docker-stack.yml", stack, /redirectregex\.replacement=https:\/\/patilulu\.com\/\$\$\{1\}/);
 assertIncludes("docker-stack.yml", stack, /redirectregex\.permanent=true/);
+assertIncludes("docker-stack.yml", stack, /patilu-api\.loadbalancer\.server\.port=8000/);
+assertIncludes("docker-stack.yml", stack, /patilu-cms\.loadbalancer\.server\.port=8080/);
 assertNotIncludes("docker-stack.yml", stack, /ports:/);
 assertNotIncludes("docker-stack.yml", stack, /build:/);
 
-const previousStackFixture = stack.replace(/patilu:\S+/, "patilu:v8.9.10");
-const currentStackFixture = stack.replace(/patilu:\S+/, "patilu:v8.9.11");
+const previousStackFixture = stack.replace(/:(?:production|v\d+\.\d+\.\d+)/g, ":v8.9.10");
+const currentStackFixture = stack.replace(/:(?:production|v\d+\.\d+\.\d+)/g, ":v8.9.11");
 assert.equal(validateStackDeploy(previousStackFixture, currentStackFixture), "v8.9.11");
-assert.throws(() => validateStackDeploy(previousStackFixture, currentStackFixture.replace("patilu:v8.9.11", "patilu:latest")), /stable SemVer/);
+assert.throws(() => validateStackDeploy(previousStackFixture, currentStackFixture.replace("patilu:v8.9.11", "patilu:latest")), /coherent|stable SemVer/);
 assert.throws(() => validateStackDeploy(previousStackFixture, `${currentStackFixture}\n# unrelated change\n`), /changed beyond/);
 assert.throws(() => validateStackDeploy(currentStackFixture, currentStackFixture), /did not change/);
 
@@ -117,9 +125,9 @@ assertIncludes(".github/workflows/deploy.yml", workflow, /contents: read/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/deployment-contract\.test\.mjs/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/set-stack-version\.test\.mjs/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /node scripts\/validate-stack-deploy\.test\.mjs/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu test/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu run typecheck/);
-assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace patilu run build/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace apps\/www test/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace apps\/www run typecheck/);
+assertIncludes(".github/workflows/deploy.yml", workflow, /npm --workspace apps\/www run build/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /docker\/build-push-action@v6/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /platforms: linux\/amd64/);
 assertIncludes(".github/workflows/deploy.yml", workflow, /sha-\$\{\{ github\.sha \}\}/);
@@ -133,7 +141,15 @@ assertIncludes("build job", buildJob, /if: github\.event_name == 'release' && gi
 assertIncludes("build job", buildJob, /:sha-\$\{\{ github\.sha \}\}/);
 assertNotIncludes("build job", buildJob, /:production/);
 assertNotIncludes("build job", buildJob, /:latest/);
-assertIncludes("build job", buildJob, /file: patilu\/Dockerfile/);
+assertIncludes("build job", buildJob, /file: apps\/www\/Dockerfile/);
+assertIncludes("build job", buildJob, /file: \$\{\{ matrix\.dockerfile \}\}/);
+assertIncludes("build job", buildJob, /context: \$\{\{ matrix\.context \}\}/);
+assertIncludes("build job", buildJob, /image: patilu-api/);
+assertIncludes("build job", buildJob, /context: apps\/api/);
+assertIncludes("build job", buildJob, /dockerfile: apps\/api\/Dockerfile/);
+assertIncludes("build job", buildJob, /image: patilu-cms/);
+assertIncludes("build job", buildJob, /dockerfile: apps\/cms\/Dockerfile/);
+assertIncludes("build job", buildJob, /VITE_API_BASE_URL=https:\/\/patilulu\.com\/api/);
 
 const validation = jobSection(workflow, "release-validation", "build");
 assertIncludes("release-validation job", validation, /\^v\(0\|\[1-9\]\[0-9\]\*\)/);
@@ -148,7 +164,8 @@ assertNotIncludes("release-validation job", validation, /COMMIT_SUBJECT|AUTHOR_N
 const promote = jobSection(workflow, "promote", "update-stack");
 assertIncludes("promote job", promote, /needs: \[release-validation, build\]/);
 assertIncludes("promote job", promote, /if: github\.event_name == 'release' && github\.event\.action == 'published'/);
-assertIncludes("promote job", promote, /source="\$\{REGISTRY\}\/\$\{IMAGE_OWNER\}\/patilu:sha-\$\{\{ github\.sha \}\}"/);
+assertIncludes("promote job", promote, /for image in patilu patilu-api patilu-cms/);
+assertIncludes("promote job", promote, /source="\$\{REGISTRY\}\/\$\{IMAGE_OWNER\}\/\$\{image\}:sha-\$\{\{ github\.sha \}\}"/);
 assertIncludes("promote job", promote, /docker buildx imagetools inspect "\$source"/);
 assertIncludes("promote job", promote, /github\.event\.release\.tag_name/);
 assertNotIncludes("promote job", promote, /:(?:latest|production)/);
@@ -201,11 +218,12 @@ assertIncludes("deploy job", deploy, /steps\.stack-pin\.outputs\.deploy_stack ==
 assertIncludes("deploy job", deploy, /gh release view "\$\{\{ steps\.stack-pin\.outputs\.stack_tag \}\}" --json tagName,isDraft,isPrerelease/);
 assertIncludes("deploy job", deploy, /docker\/login-action@v3/);
 assertIncludes("deploy job", deploy, /docker\/setup-buildx-action@v3/);
-assertIncludes("deploy job", deploy, /image_reference="\$\{REGISTRY\}\/\$\{IMAGE_OWNER\}\/patilu:\$\{\{ steps\.stack-pin\.outputs\.stack_tag \}\}"/);
+assertIncludes("deploy job", deploy, /for image in patilu patilu-api patilu-cms/);
+assertIncludes("deploy job", deploy, /image_reference="\$\{REGISTRY\}\/\$\{IMAGE_OWNER\}\/\$\{image\}:\$\{\{ steps\.stack-pin\.outputs\.stack_tag \}\}"/);
 assertIncludes("deploy job", deploy, /docker buildx imagetools inspect "\$image_reference"/);
 assertIncludes("deploy job", deploy, /node scripts\/validate-stack-deploy\.mjs/);
 assertIncludes("deploy job", deploy, /--release-metadata "\$RUNNER_TEMP\/release\.json"/);
-assertIncludes("deploy job", deploy, /--image-reference "\$image_reference"/);
+assertIncludes("deploy job", deploy, /--image-reference "\$image_references"/);
 assertNotIncludes("deploy job", deploy, /github\.event\.action == 'published'/);
 assertNotIncludes("deploy job", deploy, /needs: \[build\]/);
   for (const option of [
@@ -223,7 +241,12 @@ const tagDeploy = jobSection(workflow, "tag-deploy", "");
 assertIncludes("tag-deploy job", tagDeploy, /if: github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\)/);
 assertIncludes("tag-deploy job", tagDeploy, /docker\/build-push-action@v6/);
 assertIncludes("tag-deploy job", tagDeploy, /context: \./);
-assertIncludes("tag-deploy job", tagDeploy, /file: patilu\/Dockerfile/);
+assertIncludes("tag-deploy job", tagDeploy, /context: \$\{\{ matrix\.context \}\}/);
+assertIncludes("tag-deploy job", tagDeploy, /file: apps\/www\/Dockerfile/);
+assertIncludes("tag-deploy job", tagDeploy, /file: \$\{\{ matrix\.dockerfile \}\}/);
+assertIncludes("tag-deploy job", tagDeploy, /image: patilu-api/);
+assertIncludes("tag-deploy job", tagDeploy, /dockerfile: apps\/api\/Dockerfile/);
+assertIncludes("tag-deploy job", tagDeploy, /image: patilu-cms/);
 assertIncludes("tag-deploy job", tagDeploy, /platforms: linux\/amd64/);
 assertIncludes("tag-deploy job", tagDeploy, /github\.ref_name/);
 assertIncludes("tag-deploy job", tagDeploy, /contents: read/);
@@ -238,7 +261,7 @@ assertNotIncludes("README out-of-scope section", outOfScope, /\bdeployment\b/i);
 assertIncludes("README.md", readme, /## Deployment foundation/);
 
 const dependabot = read(".github/dependabot.yml");
-for (const directory of ["/", "/patilu"]) {
+for (const directory of ["/", "/apps/www"]) {
   assertIncludes(".github/dependabot.yml", dependabot, new RegExp(`directory: "${directory}"`));
 }
 assertNotIncludes(".github/dependabot.yml", dependabot, /patilu-api/);
@@ -248,8 +271,8 @@ assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "github
 assertIncludes(".github/dependabot.yml", dependabot, /package-ecosystem: "docker"/);
 assertIncludes(".github/dependabot.yml", dependabot, /groups:/);
 
-const astroConfig = read("patilu/astro.config.mjs");
-assertIncludes("patilu/astro.config.mjs", astroConfig, /site: "https:\/\/patilulu\.com"/);
-assertNotIncludes("patilu/astro.config.mjs", astroConfig, /patilu\.qeva\.xyz/);
+const astroConfig = read("apps/www/astro.config.mjs");
+assertIncludes("apps/www/astro.config.mjs", astroConfig, /site: "https:\/\/patilulu\.com"/);
+assertNotIncludes("apps/www/astro.config.mjs", astroConfig, /patilu\.qeva\.xyz/);
 
 console.log("deployment contract passed");

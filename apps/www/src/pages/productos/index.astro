@@ -1,0 +1,37 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Breadcrumbs from "../../components/Breadcrumbs.astro";
+import { AVAILABILITY_LABELS, formatPrice, getPrimaryImage, getPublishedProducts } from "../../data/catalog";
+import { getProductWhatsappUrl } from "../../data/products";
+import { CATEGORY_LABELS, CATEGORY_SLUGS } from "../../data/categories";
+
+const products = await getPublishedProducts();
+---
+<BaseLayout
+  title="Catálogo de muñecos tejidos al crochet | Patilu"
+  description="Explorá el catálogo completo de muñecos y amigurumis tejidos al crochet por Patilu en Pinamar."
+  activePath="/productos"
+>
+  <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Muñecos" }]} />
+  <section class="section products-section">
+    <div class="container">
+      <div class="section-heading"><div><p class="eyebrow">Catálogo artesanal</p><h1>Muñecos <span aria-hidden="true">♡</span></h1></div></div>
+      <nav class="category-filters" aria-label="Categorías del catálogo">
+        {CATEGORY_SLUGS.map((slug) => <a class="text-link" href={`/categoria/${slug}`}>{CATEGORY_LABELS[slug]} →</a>)}
+      </nav>
+      <div class="product-grid">
+        {products.map((product) => { const primary = getPrimaryImage(product); return <article class="product-card"><a class="product-card-link" href={`/productos/${product.slug}/`} aria-label={`Ver catálogo de ${product.title}`}><div class="product-image">{primary ? <img src={primary.url} alt={primary.alt_text} loading="lazy" /> : <div class="catalog-placeholder">Foto próximamente</div>}</div><div class="product-body"><h2>{product.title}</h2><p class="price">{formatPrice(product)}</p><p class="stock">{AVAILABILITY_LABELS[product.availability]}</p></div></a><div class="product-actions"><a class="button button-outline" href={getProductWhatsappUrl({ name: product.title })} target="_blank" rel="noopener noreferrer">Consultar</a><a class="button button-soft" href={`/productos/${product.slug}/`}>Ver</a></div></article>})}
+      </div>
+      {products.length === 0 && <p class="empty-state">Todavía no hay productos publicados. Muy pronto vas a poder consultar el catálogo completo acá.</p>}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .category-filters{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:28px}
+   .products-section{background:var(--surface)}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.product-card{overflow:hidden;border:1px solid var(--border);border-radius:20px;background:#fff;box-shadow:0 8px 24px rgba(70,56,58,.055);transition:transform .2s ease,box-shadow .2s ease}.product-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-sm)}.product-card-link{display:block}.product-image{position:relative;aspect-ratio:1/1.12;overflow:hidden;background:#f8eee6}.product-image img{height:100%;object-fit:contain}.product-body{padding:15px}.product-body h2{min-height:38px;font-size:1rem}.price{margin-bottom:6px;color:#d26073;font-size:.95rem;font-weight:800}.stock{margin-bottom:14px;color:#6b5d60;font-size:.78rem;font-weight:800}.product-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 15px 15px}.product-actions .button{width:100%;min-height:40px;padding:9px 10px;border-radius:12px;font-size:.82rem}.catalog-placeholder{height:100%;display:grid;place-items:center;padding:20px;color:var(--muted);font-size:.8rem;text-align:center}
+  .empty-state{padding:40px 0;color:var(--muted)}
+  @media (max-width:1100px){.product-grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:680px){.product-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:420px){.product-grid{grid-template-columns:1fr}}
+</style>
