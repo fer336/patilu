@@ -87,7 +87,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=network_public
-        - traefik.http.routers.patilu-cms.rule=Host(`cms-patilulu.com`)
+        - traefik.http.routers.patilu-cms.rule=Host(`cms.patilulu.com`)
         - traefik.http.routers.patilu-cms.entrypoints=websecure
         - traefik.http.routers.patilu-cms.tls.certresolver=letsencryptresolver
         - traefik.http.services.patilu-cms.loadbalancer.server.port=8080

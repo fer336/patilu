@@ -99,7 +99,7 @@ assertNotIncludes("docker-stack.yml", stack, /cms-patilu\.qeva\.xyz/);
 assertNotIncludes("docker-stack.yml", stack, /patilu\.qeva\.xyz/);
 assertIncludes("docker-stack.yml", stack, /Host\(`patilulu\.com`\)/);
 assertIncludes("docker-stack.yml", stack, /Host\(`patilulu\.com`\) && PathPrefix\(`\/api`\)/);
-assertIncludes("docker-stack.yml", stack, /Host\(`cms-patilulu\.com`\)/);
+assertIncludes("docker-stack.yml", stack, /Host\(`cms\.patilulu\.com`\)/);
 assertIncludes("docker-stack.yml", stack, /Host\(`www\.patilulu\.com`\)/);
 assertIncludes("docker-stack.yml", stack, /redirectregex\.replacement=https:\/\/patilulu\.com\/\$\$\{1\}/);
 assertIncludes("docker-stack.yml", stack, /redirectregex\.permanent=true/);
