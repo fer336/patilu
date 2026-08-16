@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -63,7 +63,7 @@ jobs:
       main_sha: ${{ steps.validate.outputs.main_sha }}
     steps:
       - name: Checkout release
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
@@ -125,7 +125,7 @@ jobs:
               VITE_API_BASE_URL=https://patilulu.com/api
     steps:
       - name: Checkout release
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-validation.outputs.release_sha }}
       - name: Log in to GHCR
@@ -186,7 +186,7 @@ jobs:
       pr_url: ${{ steps.pin.outputs.pr_url }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -253,7 +253,7 @@ jobs:
       packages: read
     steps:
       - name: Checkout main
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -348,7 +348,7 @@ jobs:
               VITE_API_BASE_URL=https://patilulu.com/api
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
