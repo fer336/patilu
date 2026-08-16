@@ -79,7 +79,7 @@ assert.match(siteSource, /getPublishedProducts/);
 assert.match(siteSource, /getPrimaryImage/);
 assert.match(catalogSource, /API_INTERNAL_URL/);
 assert.match(catalogSource, /ALLOW_CATALOG_FALLBACK === "true"/);
-assert.match(catalogSource, /apiBaseUrl\.startsWith\("http:\/\/localhost:"\)/);
+assert.doesNotMatch(catalogSource, /apiBaseUrl\.startsWith\("http:\/\/localhost:"\)/);
 assert.match(catalogSource, /response\.status === 404\) return null/);
 assert.match(catalogSource, /price: null/);
 assert.match(catalogSource, /availability: "made_to_order"/);
