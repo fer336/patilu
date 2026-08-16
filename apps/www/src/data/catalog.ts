@@ -8,7 +8,7 @@ export interface CatalogImage { id: string; url: string; alt_text: string; posit
 export interface CatalogProduct { id: string; slug: string; title: string; description: string; measure: string; price: string | null; currency: string; availability: Availability; category: CategorySlug; trend: boolean; images: CatalogImage[] }
 
 const apiBaseUrl = process.env.API_INTERNAL_URL ?? import.meta.env.API_BASE_URL ?? "http://localhost:8000";
-const allowFallback = process.env.ALLOW_CATALOG_FALLBACK !== "false";
+const allowFallback = process.env.ALLOW_CATALOG_FALLBACK === "true" || apiBaseUrl.startsWith("http://localhost:");
 
 function fallbackToCatalog(product: FallbackProduct): CatalogProduct {
   return { id: `fallback-${product.slug}`, slug: product.slug, title: product.name, description: product.description, measure: product.measure, price: null, currency: product.currency, availability: "made_to_order", category: product.category, trend: product.trend, images: product.gallery.map((url, position) => ({ id: `fallback-${product.slug}-${position}`, url, alt_text: position === 0 ? product.alt : `Detalle de ${product.name}`, position, is_primary: position === 0 })) };
