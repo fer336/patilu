@@ -1,14 +1,13 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Breadcrumbs from "../../components/Breadcrumbs.astro";
-import PurchaseModal from "../../components/PurchaseModal.astro";
 import { AVAILABILITY_LABELS, formatPrice, getPrimaryImage, getPublishedProduct } from "../../data/catalog";
 import { getProductWhatsappUrl } from "../../data/products";
 
 const product = await getPublishedProduct(Astro.params.slug ?? "");
 if (!product) return new Response("Producto no encontrado", { status: 404 });
 const primary = getPrimaryImage(product);
-const thumbnails = product.images.filter((image) => !image.is_primary).sort((a, b) => a.position - b.position);
+const galleryImages = [...product.images].sort((a, b) => a.position - b.position);
 const siteUrl = "https://patilulu.com";
 const productUrl = new URL(`/productos/${product.slug}`, siteUrl).toString();
 const productImageUrl = primary ? new URL(primary.url, siteUrl).toString() : new URL("/assets/og-image.png", siteUrl).toString();
@@ -52,15 +51,14 @@ const breadcrumbJsonLd = {
     <div class="container product-layout">
       <div class="gallery" aria-label={`Imágenes de ${product.title}`}>
         <div class="main-image">{primary ? <img id="product-main-image" src={primary.url} alt={primary.alt_text} /> : <div class="image-placeholder">Foto próximamente</div>}</div>
-        {thumbnails.length > 0 && <div class="thumb-grid" aria-label="Galería de detalles">
-          {thumbnails.map((image) => <button type="button" class="thumbnail" data-gallery-image={image.url} data-gallery-alt={image.alt_text} aria-label={`Ver ${image.alt_text}`} aria-pressed="false"><img src={image.url} alt="" loading="lazy" /></button>)}
+        {galleryImages.length > 1 && <div class="thumb-grid" aria-label="Galería de detalles">
+          {galleryImages.map((image) => <button type="button" class="thumbnail" data-gallery-image={image.url} data-gallery-alt={image.alt_text} aria-label={`Ver ${image.alt_text}`} aria-pressed={image.id === primary?.id}><img src={image.url} alt="" loading="lazy" /></button>)}
         </div>}
       </div>
       <article class="product-info"><p class="eyebrow">Pieza artesanal</p><h1>{product.title}</h1><p class="lead">{product.description}</p><dl class="facts"><div><dt>Medida</dt><dd>{product.measure}</dd></div><div><dt>Disponibilidad</dt><dd>{AVAILABILITY_LABELS[product.availability]}</dd></div><div><dt>Precio</dt><dd>{formatPrice(product)}</dd></div></dl></article>
       <aside class="purchase-card" aria-label="Opciones para consultar o comprar"><p class="card-label">Compra sin checkout online</p><h2>Coordiná este producto</h2><p>Podés dejar tus datos para avanzar después o consultar por WhatsApp antes de decidir.</p><button class="button button-primary" type="button" data-buy-button data-product={product.title}>Comprar</button><a class="button button-outline" href={getProductWhatsappUrl({ name: product.title })} target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a><div class="notes"><strong>Importante</strong><span>No hay pago automático. Patilu confirma precio, disponibilidad y coordinación antes de avanzar.</span></div></aside>
     </div>
   </section>
-  <PurchaseModal id="product-purchase-modal" />
   <script is:inline>
     const mainImage = document.querySelector("#product-main-image");
     const thumbnails = document.querySelectorAll("[data-gallery-image]");

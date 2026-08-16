@@ -89,7 +89,7 @@ const { products } = Astro.props;
     position: relative;
     width: 100%;
     height: 100%;
-    touch-action: none;
+    touch-action: pan-y;
     cursor: grab;
     user-select: none;
   }
@@ -230,9 +230,12 @@ const { products } = Astro.props;
     let dragStartProgress = 0;
     let pointerMoved = 0;
     let suppressClick = false;
+    let startX = 0;
+    let startY = 0;
     let lastX = 0;
     let lastT = 0;
     let velocity = 0;
+    let horizontalDrag = false;
 
     const getConfig = () => {
       const width = window.innerWidth;
@@ -303,15 +306,29 @@ const { products } = Astro.props;
       dragging = true;
       pointerMoved = 0;
       dragStartProgress = progress;
+      startX = event.clientX;
+      startY = event.clientY;
       lastX = event.clientX;
       lastT = performance.now();
       velocity = 0;
+      horizontalDrag = false;
       cancelAnimationFrame(rafId);
     });
 
     track.addEventListener("pointermove", (event) => {
       if (!dragging) return;
       const config = getConfig();
+      const totalDx = event.clientX - startX;
+      const totalDy = event.clientY - startY;
+      if (!horizontalDrag) {
+        if (Math.abs(totalDy) > 8 && Math.abs(totalDy) > Math.abs(totalDx)) {
+          dragging = false;
+          pointerMoved = 0;
+          return;
+        }
+        if (Math.abs(totalDx) < 6) return;
+        horizontalDrag = true;
+      }
       const dx = event.clientX - lastX;
       const now = performance.now();
       const dt = Math.max(1, now - lastT);
@@ -321,7 +338,7 @@ const { products } = Astro.props;
       pointerMoved += Math.abs(dx);
       // Capture only once real dragging is confirmed, so a plain click on a
       // card's <a> keeps its native mouseup/click target and still navigates.
-      if (pointerMoved >= 6 && capturedPointerId === null) {
+      if (horizontalDrag && pointerMoved >= 6 && capturedPointerId === null) {
         capturedPointerId = event.pointerId;
         track.setPointerCapture(event.pointerId);
       }
@@ -329,7 +346,7 @@ const { products } = Astro.props;
       render();
     });
 
-    const endDrag = (event: PointerEvent) => {
+    const endDrag = () => {
       if (!dragging) return;
       dragging = false;
       if (capturedPointerId !== null) {

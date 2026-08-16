@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { PATILU_IMAGE_REPOSITORY, STABLE_SEMVER, setStackVersion } from "./set-stack-version.mjs";
+import { EXPECTED_IMAGES, PATILU_IMAGE_REPOSITORIES, STABLE_SEMVER, setStackVersion } from "./set-stack-version.mjs";
 
-const PATILU_IMAGE = new RegExp(`${PATILU_IMAGE_REPOSITORY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:(\\S+)`);
+const PATILU_IMAGE = /ghcr\.io\/fer336\/(patilu(?:-api|-cms)?):([^\s"']+)/g;
 
 function usage() {
   throw new Error("Usage: node scripts/validate-stack-deploy.mjs --before <path> --current <path> | --tag <tag> --release-metadata <path> --image-reference <image>");
@@ -33,8 +33,14 @@ export function validateDeployProvenance(tag, releaseMetadata, imageReference) {
     throw new Error("GitHub release must be published and stable before deployment.");
   }
 
-  if (imageReference !== `${PATILU_IMAGE_REPOSITORY}:${tag}`) {
-    throw new Error("Promoted image reference does not match the stack tag.");
+  const references = imageReference.split(",").map((reference) => reference.trim()).filter(Boolean);
+  const expectedReferences = PATILU_IMAGE_REPOSITORIES.map((repository) => `${repository}:${tag}`);
+  if (
+    references.length !== expectedReferences.length ||
+    expectedReferences.some((expected) => !references.includes(expected)) ||
+    references.some((reference) => !expectedReferences.includes(reference))
+  ) {
+    throw new Error("Promoted image references do not match the stack tag.");
   }
 
   return tag;
@@ -43,10 +49,20 @@ export function validateDeployProvenance(tag, releaseMetadata, imageReference) {
 export function validateStackDeploy(previousStack, currentStack) {
   if (previousStack === currentStack) throw new Error("docker-stack.yml did not change the release image pin.");
 
-  const match = currentStack.match(PATILU_IMAGE);
-  if (!match) throw new Error("docker-stack.yml does not contain the Patilu image tag.");
+  const matches = [...currentStack.matchAll(PATILU_IMAGE)];
+  const names = matches.map((match) => match[1]);
+  if (
+    matches.length !== EXPECTED_IMAGES.length ||
+    EXPECTED_IMAGES.some((image) => names.filter((name) => name === image).length !== 1) ||
+    names.some((name) => !EXPECTED_IMAGES.includes(name))
+  ) {
+    throw new Error("docker-stack.yml must contain exactly one reference for each expected Patilu image.");
+  }
 
-  const tag = match[1];
+  const tags = new Set(matches.map((match) => match[2]));
+  if (tags.size !== 1) throw new Error("docker-stack.yml image tags must be coherent.");
+
+  const [tag] = tags;
   if (!STABLE_SEMVER.test(tag)) throw new Error("docker-stack.yml is not pinned to a stable SemVer tag.");
 
   if (setStackVersion(previousStack, tag) !== currentStack) {

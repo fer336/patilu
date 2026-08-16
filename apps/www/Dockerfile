@@ -1,8 +1,8 @@
 FROM node:24-alpine AS build
 WORKDIR /workspace/patilu
-COPY patilu/package.json ./package.json
+COPY apps/www/package.json ./package.json
 RUN npm install
-COPY patilu/ ./
+COPY apps/www/ ./
 RUN npm run build
 
 FROM node:24-alpine AS runtime

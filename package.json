@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "workspaces": ["patilu"],
+  "workspaces": ["apps/www", "apps/cms"],
   "scripts": {
     "test": "node scripts/smoke.mjs test",
     "typecheck": "node scripts/smoke.mjs typecheck",

@@ -6,8 +6,8 @@ const requiredFiles = [
   ".env.example",
   "shared/contracts/catalog-status.ts",
   "shared/contracts/catalog_status.py",
-  "patilu/package.json",
-  "patilu/src/pages/index.astro",
+  "apps/www/package.json",
+  "apps/www/src/pages/index.astro",
 ];
 
 for (const file of requiredFiles) {

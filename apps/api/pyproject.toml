@@ -1,0 +1,25 @@
+[project]
+name = "patilu-api"
+version = "0.0.0"
+description = "FastAPI boundary for the Patilu managed catalog platform."
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.16,<2",
+    "fastapi[standard]>=0.116,<1.0",
+    "minio>=7.2,<8",
+    "pillow>=11.3,<12",
+    "psycopg[binary]>=3.2,<4",
+    "pydantic-settings>=2.10,<3",
+    "python-multipart>=0.0.20,<1",
+    "sqlalchemy>=2.0,<3",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.4"]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
