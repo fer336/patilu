@@ -3,6 +3,8 @@ version: "3.8"
 services:
   patilu:
     image: ghcr.io/fer336/patilu:v0.1.22
+    environment:
+      API_INTERNAL_URL: http://patilu-api:8000
     networks:
       - network_public
     healthcheck:

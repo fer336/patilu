@@ -25,7 +25,7 @@ export async function getPublishedProducts(): Promise<CatalogProduct[]> {
     if (!response.ok) throw new Error(`Catalog API returned ${response.status}`);
     return await response.json() as CatalogProduct[];
   } catch (error) {
-    if (!allowFallback) throw error;
+    if (!allowFallback) return [];
     console.warn("Catalog API unavailable; using local development fallback.", error);
     return getFallbackProducts();
   }
@@ -38,7 +38,7 @@ export async function getPublishedProduct(slug: string): Promise<CatalogProduct 
     if (!response.ok) throw new Error(`Catalog API returned ${response.status}`);
     return await response.json() as CatalogProduct;
   } catch (error) {
-    if (!allowFallback) throw error;
+    if (!allowFallback) return null;
     console.warn("Catalog API unavailable; using local development fallback.", error);
     const fallback = await getFallbackProducts();
     return fallback.find((product) => product.slug === slug) ?? null;
