@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 import pytest
@@ -105,7 +106,7 @@ def test_admin_mutations_require_valid_bearer_token(client: TestClient) -> None:
 
 def test_admin_reads_require_valid_bearer_token(client: TestClient) -> None:
     created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
-    product_id = created.json()["id"]
+    product_id = uuid.UUID(created.json()["id"])
 
     for path in ("/admin/products", f"/admin/products/{product_id}"):
         assert client.get(path).status_code == 401
@@ -152,6 +153,58 @@ def test_primary_cannot_be_deleted_until_replaced(
     assert result.images[0].id == detail.id
 
 
+def test_delete_image_endpoint_removes_record_and_storage_object(
+    client: TestClient, service: ProductService, session: Session, storage, image_bytes: bytes
+) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = uuid.UUID(created.json()["id"])
+    upload = client.post(
+        f"/admin/products/{product_id}/images",
+        files=[
+            ("files", ("cover.png", image_bytes, "image/png")),
+            ("files", ("detail.png", image_bytes, "image/png")),
+        ],
+        data={"alt_texts": ["Portada", "Detalle"], "primary_index": "0"},
+        headers=ADMIN_HEADERS,
+    )
+    assert upload.status_code == 200
+    product = service.get(product_id)
+    detail = next(image for image in product.images if not image.is_primary)
+    detail_key = detail.object_key
+
+    deleted = client.delete(f"/admin/products/{product_id}/images/{detail.id}", headers=ADMIN_HEADERS)
+
+    assert deleted.status_code == 200
+    assert all(image["id"] != str(detail.id) for image in deleted.json()["images"])
+    assert sum(image["is_primary"] for image in deleted.json()["images"]) == 1
+    assert session.get(ProductImage, detail.id) is None
+    assert detail_key not in storage.objects
+
+
+def test_delete_image_endpoint_rejects_current_primary_when_alternatives_exist(
+    client: TestClient, service: ProductService, storage, image_bytes: bytes
+) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = uuid.UUID(created.json()["id"])
+    upload = client.post(
+        f"/admin/products/{product_id}/images",
+        files=[
+            ("files", ("cover.png", image_bytes, "image/png")),
+            ("files", ("detail.png", image_bytes, "image/png")),
+        ],
+        data={"primary_index": "0"},
+        headers=ADMIN_HEADERS,
+    )
+    primary_id = next(image["id"] for image in upload.json()["images"] if image["is_primary"])
+    stored_keys = set(storage.objects)
+
+    deleted = client.delete(f"/admin/products/{product_id}/images/{primary_id}", headers=ADMIN_HEADERS)
+
+    assert deleted.status_code == 409
+    assert set(storage.objects) == stored_keys
+    assert sum(image.is_primary for image in service.get(product_id).images) == 1
+
+
 def test_switching_primary_keeps_exactly_one(service: ProductService, image_bytes: bytes) -> None:
     product = service.create(ProductCreate.model_validate(product_payload()))
     uploaded = service.upload_images(
@@ -163,6 +216,72 @@ def test_switching_primary_keeps_exactly_one(service: ProductService, image_byte
     result = service.set_primary(product.id, uploaded.images[1].id)
     assert sum(image.is_primary for image in result.images) == 1
     assert result.images[1].is_primary is True
+
+
+def test_uploading_multiple_images_with_primary_index_keeps_exactly_one_primary(
+    service: ProductService, image_bytes: bytes
+) -> None:
+    product = service.create(ProductCreate.model_validate(product_payload()))
+    initial = service.upload_images(product.id, [(image_bytes, "image/png")], ["Portada anterior"], 0)
+
+    result = service.upload_images(
+        product.id,
+        [(image_bytes, "image/png"), (image_bytes, "image/png")],
+        ["Detalle", "Nueva portada"],
+        1,
+    )
+
+    assert len(result.images) == 3
+    assert sum(image.is_primary for image in result.images) == 1
+    assert next(image for image in result.images if image.is_primary).alt_text == "Nueva portada"
+    assert next(image for image in result.images if image.id == initial.images[0].id).is_primary is False
+
+
+def test_upload_endpoint_rejects_invalid_primary_index_without_storing_files(
+    client: TestClient, storage, image_bytes: bytes
+) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = uuid.UUID(created.json()["id"])
+
+    upload = client.post(
+        f"/admin/products/{product_id}/images",
+        files=[("files", ("cover.png", image_bytes, "image/png"))],
+        data={"primary_index": "1"},
+        headers=ADMIN_HEADERS,
+    )
+
+    assert upload.status_code == 400
+    assert storage.objects == {}
+
+
+def test_delete_product_removes_all_image_storage_objects(
+    client: TestClient, service: ProductService, session: Session, storage, image_bytes: bytes
+) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = uuid.UUID(created.json()["id"])
+    upload = client.post(
+        f"/admin/products/{product_id}/images",
+        files=[
+            ("files", ("cover.png", image_bytes, "image/png")),
+            ("files", ("detail.png", image_bytes, "image/png")),
+            ("files", ("detail-2.png", image_bytes, "image/png")),
+        ],
+        data={"primary_index": "0"},
+        headers=ADMIN_HEADERS,
+    )
+    assert upload.status_code == 200
+    image_ids = [image.id for image in service.get(product_id).images]
+    stored_keys = set(storage.objects)
+    assert len(stored_keys) == 3
+
+    deleted = client.delete(f"/admin/products/{product_id}", headers=ADMIN_HEADERS)
+
+    assert deleted.status_code == 204
+    assert all(key not in storage.objects for key in stored_keys)
+    assert all(session.get(ProductImage, image_id) is None for image_id in image_ids)
+    with pytest.raises(HTTPException) as error:
+        service.get(product_id)
+    assert error.value.status_code == 404
 
 
 def test_database_partial_unique_index_rejects_two_primaries(
