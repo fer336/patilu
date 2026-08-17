@@ -42,7 +42,7 @@ All secret configuration lives in external Docker Swarm secrets; the stack decla
 
 | Secret | Contents |
 |---|---|
-| `patilu_backend_env` | Complete dotenv document for the API, mounted at `/run/secrets/backend.env` with mode `0444`. Must define `DATABASE_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `GOOGLE_CLIENT_ID`, `ADMIN_ALLOWED_EMAILS`, and `API_ADMIN_SESSION_SECRET`. `API_ADMIN_TOKEN` is supported only as a legacy fallback. |
+| `patilu_backend_env` | Complete dotenv document for the API, mounted at `/run/secrets/backend.env` with mode `0444`. Must define `DATABASE_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `GOOGLE_CLIENT_ID`, `ADMIN_ALLOWED_EMAILS`, and `API_ADMIN_SESSION_SECRET`. `API_ADMIN_TOKEN` and `API_AGENT_TOKEN` are supported only as legacy fallbacks. |
 
 Create it on a Swarm manager with `docker secret create <name> <file>` (for example, `printf '%s' 'value' | docker secret create patilu_backend_env -`) or through Portainer's Secrets view. The stack references it as `external: true`, so the name must match exactly.
 
@@ -56,6 +56,8 @@ The API runs `alembic upgrade head` before starting against the external Postgre
 Astro runs with the Node standalone adapter and reads `API_INTERNAL_URL` at runtime, so new published slugs appear without a Git rebuild. Local development falls back to the bundled sample catalog when localhost API access fails; production does not hide API failures behind stale data. `ALLOW_CATALOG_FALLBACK=true` enables that behavior explicitly outside localhost.
 
 CMS access uses Google Identity Services. The CMS build receives only the public `VITE_GOOGLE_CLIENT_ID`; the API verifies Google ID tokens against `GOOGLE_CLIENT_ID`, requires `email_verified`, and allows only emails listed in `ADMIN_ALLOWED_EMAILS`. The API returns a short-lived bearer session signed with `API_ADMIN_SESSION_SECRET`. Infrastructure access controls remain recommended because CORS is not an authentication boundary.
+
+External AI agents use CMS-managed bearer tokens for backend-only `/agent/products` catalog and gallery endpoints. Admins create, revoke, and delete those tokens in the CMS; the full token is returned only once on creation, and the API stores only a hash plus display-safe metadata. The optional `API_AGENT_TOKEN` environment value remains available as a legacy fallback and must not be exposed to frontend builds.
 
 To import the current fallback products and image assets into an empty catalog, run from `apps/api`: `uv run python -m app.seed --assets-dir ../www/public/assets`. The import is idempotent by slug and requires reachable PostgreSQL and MinIO services.
 

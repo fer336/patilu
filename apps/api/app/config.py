@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_public_base_url: str = "http://localhost:9000/patilu-productos"
     api_admin_token: str | None = None
+    api_agent_token: str | None = None
     api_admin_session_secret: str | None = None
     google_client_id: str | None = None
     admin_allowed_emails: str = ""

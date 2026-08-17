@@ -73,3 +73,18 @@ export interface NewImage {
   previewUrl: string;
   altText: string;
 }
+
+export interface AgentToken {
+  id: string;
+  name: string;
+  token_prefix: string;
+  token_last_chars: string;
+  active: boolean;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface CreatedAgentToken extends AgentToken {
+  token: string;
+}

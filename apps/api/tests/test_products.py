@@ -7,11 +7,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import ProductImage
+from app.models import AgentToken, ProductImage
 from app.schemas import ProductCreate, ProductUpdate
 from app.services import ProductService
 
 ADMIN_HEADERS = {"Authorization": "Bearer test-admin-token"}
+AGENT_HEADERS = {"Authorization": "Bearer test-agent-token"}
 
 
 def product_payload(**overrides: object) -> dict[str, object]:
@@ -203,6 +204,191 @@ def test_delete_image_endpoint_rejects_current_primary_when_alternatives_exist(
     assert deleted.status_code == 409
     assert set(storage.objects) == stored_keys
     assert sum(image.is_primary for image in service.get(product_id).images) == 1
+
+
+def test_agent_reads_include_draft_products_with_valid_token(client: TestClient) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = created.json()["id"]
+
+    listed = client.get("/agent/products", headers=AGENT_HEADERS)
+    fetched = client.get(f"/agent/products/{product_id}", headers=AGENT_HEADERS)
+
+    assert listed.status_code == 200
+    assert [product["id"] for product in listed.json()] == [product_id]
+    assert fetched.status_code == 200
+    assert fetched.json()["status"] == "draft"
+
+
+def test_admin_can_create_list_revoke_and_delete_agent_tokens(client: TestClient, session: Session) -> None:
+    created = client.post("/admin/agent-tokens", json={"name": "Gallery agent"}, headers=ADMIN_HEADERS)
+
+    assert created.status_code == 201
+    body = created.json()
+    assert body["name"] == "Gallery agent"
+    assert body["token"].startswith("patilu_agent_")
+    assert body["token_last_chars"] == body["token"][-6:]
+    assert body["active"] is True
+    assert "token_hash" not in body
+    assert session.get(AgentToken, uuid.UUID(body["id"])).token_hash != body["token"]
+
+    listed = client.get("/admin/agent-tokens", headers=ADMIN_HEADERS)
+    assert listed.status_code == 200
+    assert listed.json()[0]["id"] == body["id"]
+    assert "token" not in listed.json()[0]
+    assert "token_hash" not in listed.json()[0]
+
+    revoked = client.post(f"/admin/agent-tokens/{body['id']}/revoke", headers=ADMIN_HEADERS)
+    assert revoked.status_code == 200
+    assert revoked.json()["active"] is False
+    assert revoked.json()["revoked_at"] is not None
+
+    deleted = client.delete(f"/admin/agent-tokens/{body['id']}", headers=ADMIN_HEADERS)
+    assert deleted.status_code == 204
+    assert session.get(AgentToken, uuid.UUID(body["id"])) is None
+
+
+def test_agent_token_management_requires_admin_auth(client: TestClient) -> None:
+    assert client.get("/admin/agent-tokens").status_code == 401
+    assert client.post("/admin/agent-tokens", json={"name": "Nope"}, headers=AGENT_HEADERS).status_code == 401
+
+
+def test_managed_agent_token_authenticates_until_revoked_or_deleted(client: TestClient, session: Session) -> None:
+    created = client.post("/admin/agent-tokens", json={"name": "Gallery agent"}, headers=ADMIN_HEADERS)
+    token = created.json()["token"]
+    token_id = uuid.UUID(created.json()["id"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    first_auth = client.get("/agent/products", headers=headers)
+    session.expire_all()
+    stored = session.get(AgentToken, token_id)
+    assert first_auth.status_code == 200
+    assert stored is not None
+    assert stored.last_used_at is not None
+
+    revoked = client.post(f"/admin/agent-tokens/{token_id}/revoke", headers=ADMIN_HEADERS)
+    assert revoked.status_code == 200
+    assert client.get("/agent/products", headers=headers).status_code == 401
+
+    replacement = client.post("/admin/agent-tokens", json={"name": "Temporary agent"}, headers=ADMIN_HEADERS)
+    replacement_token = replacement.json()["token"]
+    replacement_id = replacement.json()["id"]
+    assert client.get("/agent/products", headers={"Authorization": f"Bearer {replacement_token}"}).status_code == 200
+    assert client.delete(f"/admin/agent-tokens/{replacement_id}", headers=ADMIN_HEADERS).status_code == 204
+    assert client.get("/agent/products", headers={"Authorization": f"Bearer {replacement_token}"}).status_code == 401
+
+
+def test_agent_reads_require_valid_configured_bearer_token(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import get_settings
+
+    assert client.get("/agent/products").status_code == 401
+    assert client.get("/agent/products", headers={"Authorization": "Bearer wrong"}).status_code == 401
+    assert client.get("/agent/products", headers=AGENT_HEADERS).status_code == 200
+
+    monkeypatch.delenv("API_AGENT_TOKEN", raising=False)
+    get_settings.cache_clear()
+    try:
+        assert client.get("/agent/products", headers=AGENT_HEADERS).status_code == 401
+    finally:
+        monkeypatch.setenv("API_AGENT_TOKEN", "test-agent-token")
+        get_settings.cache_clear()
+
+
+def test_agent_gallery_management_endpoints(client: TestClient, service: ProductService, image_bytes: bytes) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = uuid.UUID(created.json()["id"])
+    upload = client.post(
+        f"/agent/products/{product_id}/images",
+        files=[
+            ("files", ("cover.png", image_bytes, "image/png")),
+            ("files", ("detail.png", image_bytes, "image/png")),
+        ],
+        data={"alt_texts": ["Cover", "Detail"], "primary_index": "0"},
+        headers=AGENT_HEADERS,
+    )
+    assert upload.status_code == 200
+    images = upload.json()["images"]
+    primary = next(image for image in images if image["is_primary"])
+    detail = next(image for image in images if not image["is_primary"])
+
+    updated = client.patch(
+        f"/agent/products/{product_id}/images/{detail['id']}",
+        json={"alt_text": "Side detail"},
+        headers=AGENT_HEADERS,
+    )
+    assert updated.status_code == 200
+    updated_detail = next(image for image in updated.json()["images"] if image["id"] == detail["id"])
+    assert updated_detail["alt_text"] == "Side detail"
+
+    reordered = client.put(
+        f"/agent/products/{product_id}/images/order",
+        json={"images": [{"id": primary["id"], "position": 1}, {"id": detail["id"], "position": 0}]},
+        headers=AGENT_HEADERS,
+    )
+    assert reordered.status_code == 200
+    assert [image["id"] for image in reordered.json()["images"]] == [detail["id"], primary["id"]]
+
+    switched = client.put(f"/agent/products/{product_id}/images/{detail['id']}/primary", headers=AGENT_HEADERS)
+    assert switched.status_code == 200
+    assert next(image for image in switched.json()["images"] if image["is_primary"])["id"] == detail["id"]
+    assert sum(image.is_primary for image in service.get(product_id).images) == 1
+
+
+def test_agent_cannot_delete_current_primary(client: TestClient, image_bytes: bytes) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = created.json()["id"]
+    upload = client.post(
+        f"/agent/products/{product_id}/images",
+        files=[
+            ("files", ("cover.png", image_bytes, "image/png")),
+            ("files", ("detail.png", image_bytes, "image/png")),
+        ],
+        data={"primary_index": "0"},
+        headers=AGENT_HEADERS,
+    )
+    primary_id = next(image["id"] for image in upload.json()["images"] if image["is_primary"])
+
+    deleted = client.delete(f"/agent/products/{product_id}/images/{primary_id}", headers=AGENT_HEADERS)
+
+    assert deleted.status_code == 409
+
+
+def test_agent_delete_non_primary_removes_storage_object(
+    client: TestClient, service: ProductService, session: Session, storage, image_bytes: bytes
+) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = uuid.UUID(created.json()["id"])
+    upload = client.post(
+        f"/agent/products/{product_id}/images",
+        files=[
+            ("files", ("cover.png", image_bytes, "image/png")),
+            ("files", ("detail.png", image_bytes, "image/png")),
+        ],
+        data={"primary_index": "0"},
+        headers=AGENT_HEADERS,
+    )
+    assert upload.status_code == 200
+    product = service.get(product_id)
+    detail = next(image for image in product.images if not image.is_primary)
+    detail_key = detail.object_key
+
+    deleted = client.delete(f"/agent/products/{product_id}/images/{detail.id}", headers=AGENT_HEADERS)
+
+    assert deleted.status_code == 200
+    assert all(image["id"] != str(detail.id) for image in deleted.json()["images"])
+    assert session.get(ProductImage, detail.id) is None
+    assert detail_key not in storage.objects
+
+
+def test_agent_token_cannot_access_admin_product_delete(client: TestClient) -> None:
+    created = client.post("/admin/products", json=product_payload(), headers=ADMIN_HEADERS)
+    product_id = created.json()["id"]
+
+    deleted = client.delete(f"/admin/products/{product_id}", headers=AGENT_HEADERS)
+
+    assert deleted.status_code == 401
+    assert client.get(f"/admin/products/{product_id}", headers=ADMIN_HEADERS).status_code == 200
 
 
 def test_switching_primary_keeps_exactly_one(service: ProductService, image_bytes: bytes) -> None:

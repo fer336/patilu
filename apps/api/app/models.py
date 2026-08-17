@@ -23,6 +23,23 @@ class PublicationStatus(str, enum.Enum):
     DELETED = "deleted"
 
 
+class AgentToken(Base):
+    __tablename__ = "agent_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    token_prefix: Mapped[str] = mapped_column(String(24))
+    token_last_chars: Mapped[str] = mapped_column(String(12))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def active(self) -> bool:
+        return self.revoked_at is None
+
+
 class Product(Base):
     __tablename__ = "products"
     __table_args__ = (
