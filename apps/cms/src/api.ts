@@ -1,4 +1,4 @@
-import type { Product, ProductImage, ProductInput } from "./types";
+import type { AgentToken, CreatedAgentToken, Product, ProductImage, ProductInput } from "./types";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
 const ADMIN_SESSION_KEY = "patilu_admin_session";
@@ -19,9 +19,9 @@ export function clearAdminSession(): void {
 }
 
 function adminHeaders(path: string): HeadersInit {
-  if (!path.startsWith("/admin/products")) return {};
+  if (!path.startsWith("/admin/")) return {};
   const token = getAdminSessionToken();
-  if (!token) throw new Error("Iniciá sesión con Google para administrar el catálogo.");
+  if (!token) throw new Error("Sign in with Google to manage the CMS.");
   return { Authorization: `Bearer ${token}` };
 }
 
@@ -61,6 +61,13 @@ export const catalogApi = {
     if (primaryIndex !== null) body.append("primary_index", String(primaryIndex));
     return request<Product>(`/admin/products/${productId}/images`, { method: "POST", body });
   },
+};
+
+export const agentTokenApi = {
+  list: () => request<AgentToken[]>("/admin/agent-tokens"),
+  create: (name: string) => request<CreatedAgentToken>("/admin/agent-tokens", { method: "POST", body: JSON.stringify({ name }) }),
+  revoke: (id: string) => request<AgentToken>(`/admin/agent-tokens/${id}/revoke`, { method: "POST" }),
+  delete: (id: string) => request<void>(`/admin/agent-tokens/${id}`, { method: "DELETE" }),
 };
 
 export const authApi = {

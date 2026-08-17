@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base
+from app.database import Base, get_session
 from app.config import get_settings
 from app.dependencies import get_product_service
 from app.main import app
@@ -54,11 +54,13 @@ def service(session: Session, storage: FakeStorage) -> ProductService:
 @pytest.fixture
 def client(service: ProductService, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
     monkeypatch.setenv("API_ADMIN_TOKEN", "test-admin-token")
+    monkeypatch.setenv("API_AGENT_TOKEN", "test-agent-token")
     monkeypatch.setenv("API_ADMIN_SESSION_SECRET", "test-session-secret")
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "cms-client-id.apps.googleusercontent.com")
     monkeypatch.setenv("ADMIN_ALLOWED_EMAILS", "admin@example.com")
     get_settings.cache_clear()
     app.dependency_overrides[get_product_service] = lambda: service
+    app.dependency_overrides[get_session] = lambda: service.session
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

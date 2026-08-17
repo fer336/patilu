@@ -1,10 +1,12 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { authApi, catalogApi, getAdminSessionToken } from "./api";
+import { agentTokenApi, authApi, catalogApi, getAdminSessionToken } from "./api";
 import {
   AVAILABILITY,
   CATEGORY,
   CATEGORY_LABELS,
   PUBLICATION_STATUS,
+  type AgentToken,
+  type CreatedAgentToken,
   type NewImage,
   type Product,
   type ProductImage,
@@ -80,12 +82,17 @@ export function App() {
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
   const [newImages, setNewImages] = useState<NewImage[]>([]);
   const [primarySelection, setPrimarySelection] = useState<string | null>(null);
+  const [agentTokens, setAgentTokens] = useState<AgentToken[]>([]);
+  const [agentTokenName, setAgentTokenName] = useState("");
+  const [createdAgentToken, setCreatedAgentToken] = useState<CreatedAgentToken | null>(null);
   const [authenticated, setAuthenticated] = useState(() => Boolean(getAdminSessionToken()));
   const [adminEmail, setAdminEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingAgentToken, setSavingAgentToken] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [agentTokenError, setAgentTokenError] = useState("");
 
   async function loadProducts(preferredId?: string) {
     setLoading(true);
@@ -104,9 +111,20 @@ export function App() {
     }
   }
 
+  async function loadAgentTokens() {
+    try {
+      const tokens = await agentTokenApi.list();
+      setAgentTokens(tokens);
+      setAgentTokenError("");
+    } catch (loadError) {
+      setAgentTokenError(loadError instanceof Error ? loadError.message : "Could not load agent tokens.");
+    }
+  }
+
   useEffect(() => {
     if (authenticated) {
       void loadProducts();
+      void loadAgentTokens();
       return;
     }
     setLoading(false);
@@ -170,7 +188,61 @@ export function App() {
     setAuthenticated(false);
     setAdminEmail("");
     setProducts([]);
+    setAgentTokens([]);
+    setCreatedAgentToken(null);
     startNewProduct();
+  }
+
+  function formatDate(value: string | null): string {
+    return value ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Never";
+  }
+
+  function tokenPreview(token: AgentToken): string {
+    return `${token.token_prefix}...${token.token_last_chars}`;
+  }
+
+  async function createAgentToken(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!agentTokenName.trim()) return;
+    setSavingAgentToken(true);
+    setAgentTokenError("");
+    try {
+      const token = await agentTokenApi.create(agentTokenName);
+      setCreatedAgentToken(token);
+      setAgentTokenName("");
+      await loadAgentTokens();
+    } catch (createError) {
+      setAgentTokenError(createError instanceof Error ? createError.message : "Could not create the agent token.");
+    } finally {
+      setSavingAgentToken(false);
+    }
+  }
+
+  async function revokeAgentToken(token: AgentToken) {
+    setSavingAgentToken(true);
+    setAgentTokenError("");
+    try {
+      const revoked = await agentTokenApi.revoke(token.id);
+      setAgentTokens((current) => current.map((candidate) => candidate.id === revoked.id ? revoked : candidate));
+    } catch (revokeError) {
+      setAgentTokenError(revokeError instanceof Error ? revokeError.message : "Could not revoke the agent token.");
+    } finally {
+      setSavingAgentToken(false);
+    }
+  }
+
+  async function deleteAgentToken(token: AgentToken) {
+    setSavingAgentToken(true);
+    setAgentTokenError("");
+    try {
+      await agentTokenApi.delete(token.id);
+      setAgentTokens((current) => current.filter((candidate) => candidate.id !== token.id));
+      if (createdAgentToken?.id === token.id) setCreatedAgentToken(null);
+    } catch (deleteError) {
+      setAgentTokenError(deleteError instanceof Error ? deleteError.message : "Could not delete the agent token.");
+    } finally {
+      setSavingAgentToken(false);
+    }
   }
 
   function clearNewImages() {
@@ -415,6 +487,34 @@ export function App() {
             </fieldset>
             <div className="form-actions"><button className="save-button" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar producto"}</button><span>Los cambios publicados aparecen en la web sin reconstruir el sitio.</span></div>
           </form>
+        </section>
+
+        <section className="agent-token-panel" aria-labelledby="agent-token-title">
+          <div className="editor-heading"><div><p>External agent access</p><h2 id="agent-token-title">API tokens</h2></div><span className="status-chip status-published">Admin only</span></div>
+          <p className="field-help">Create tokens for external AI agents that manage product galleries through the backend API. The full token is shown once after creation.</p>
+          {agentTokenError && <p className="alert alert-error" role="alert">{agentTokenError}</p>}
+          {createdAgentToken && (
+            <div className="created-token" role="status">
+              <strong>Copy this token now</strong>
+              <p>It will not be shown again. Store it in the external agent secret manager, not in frontend code.</p>
+              <code>{createdAgentToken.token}</code>
+            </div>
+          )}
+          <form className="agent-token-form" onSubmit={createAgentToken}>
+            <label><span>Token name</span><input required maxLength={120} value={agentTokenName} onChange={(event) => setAgentTokenName(event.target.value)} placeholder="Gallery automation" /></label>
+            <button className="save-button" type="submit" disabled={savingAgentToken || !agentTokenName.trim()}>{savingAgentToken ? "Saving..." : "Create token"}</button>
+          </form>
+          {agentTokens.length === 0 ? <p className="state-message">No agent tokens created yet.</p> : (
+            <div className="agent-token-list">
+              {agentTokens.map((token) => (
+                <article className="agent-token-row" key={token.id}>
+                  <div><strong>{token.name}</strong><code>{tokenPreview(token)}</code><small>Created {formatDate(token.created_at)} · Last used {formatDate(token.last_used_at)}</small></div>
+                  <span className={`status-chip ${token.active ? "status-published" : "status-hidden"}`}>{token.active ? "Active" : "Revoked"}</span>
+                  <div className="image-actions"><button type="button" onClick={() => void revokeAgentToken(token)} disabled={savingAgentToken || !token.active}>Revoke</button><button type="button" className="danger" onClick={() => void deleteAgentToken(token)} disabled={savingAgentToken}>Delete</button></div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>

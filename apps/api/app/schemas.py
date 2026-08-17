@@ -53,6 +53,35 @@ class AdminSessionRead(BaseModel):
     email: str
 
 
+class AgentTokenCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("Token name is required.")
+        return name
+
+
+class AgentTokenRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    token_prefix: str
+    token_last_chars: str
+    active: bool
+    created_at: datetime
+    last_used_at: datetime | None
+    revoked_at: datetime | None
+
+
+class AgentTokenCreated(AgentTokenRead):
+    token: str
+
+
 class ProductImageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
