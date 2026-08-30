@@ -388,6 +388,24 @@ export function App() {
     }
   }
 
+  async function deleteProduct() {
+    if (!selected) return;
+    if (!window.confirm(`¿Eliminar "${selected.title}"? Esta acción no se puede deshacer.`)) return;
+    setSaving(true);
+    setNotice("");
+    setError("");
+    try {
+      await catalogApi.delete(selected.id);
+      startNewProduct();
+      await loadProducts();
+      setNotice("Producto eliminado correctamente.");
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No se pudo eliminar el producto.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (!GOOGLE_CLIENT_ID) {
     return (
       <main className="cms-shell auth-shell">
@@ -485,7 +503,7 @@ export function App() {
                 ))}
               </div>
             </fieldset>
-            <div className="form-actions"><button className="save-button" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar producto"}</button><span>Los cambios publicados aparecen en la web sin reconstruir el sitio.</span></div>
+            <div className="form-actions"><button className="save-button" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar producto"}</button>{selected && <button type="button" className="danger" onClick={() => void deleteProduct()} disabled={saving}>Eliminar producto</button>}<span>Los cambios publicados aparecen en la web sin reconstruir el sitio.</span></div>
           </form>
         </section>
 
