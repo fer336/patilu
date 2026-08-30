@@ -19,7 +19,7 @@ export function clearAdminSession(): void {
 }
 
 function adminHeaders(path: string): HeadersInit {
-  if (!path.startsWith("/admin/")) return {};
+  if (!path.startsWith("/admin/") || path === "/admin/auth/google") return {};
   const token = getAdminSessionToken();
   if (!token) throw new Error("Sign in with Google to manage the CMS.");
   return { Authorization: `Bearer ${token}` };
